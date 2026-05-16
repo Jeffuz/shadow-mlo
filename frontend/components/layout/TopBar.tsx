@@ -12,9 +12,6 @@ export function TopBar() {
                     <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
                         Agent Active
                     </span>
-                    <span className="hidden rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs text-zinc-300 sm:inline-flex">
-                        Watching /models/incoming
-                    </span>
                 </div>
             </div>
         </header>
