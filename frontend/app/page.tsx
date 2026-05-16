@@ -9,7 +9,6 @@ import { AgentPlanCard } from "@/components/dashboard/AgentPlanCard";
 import { ExecutionTimeline } from "@/components/dashboard/ExecutionTimeline";
 import { CandidateResultsTable } from "@/components/dashboard/CandidateResultsTable";
 import { RecommendationCard } from "@/components/dashboard/RecommendationCard";
-import { ActivityLog } from "@/components/dashboard/ActivityLog";
 import { useLatestJob } from "@/components/lib/useLatestJob";
 import { AgentReasoningCard } from "@/components/dashboard/AgentReasoningCard";
 

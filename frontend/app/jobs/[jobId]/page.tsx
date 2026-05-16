@@ -1,7 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { mockJobs } from "@/components/mock/mockJobs";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ExecutionTimeline } from "@/components/dashboard/ExecutionTimeline";
 import { CandidateResultsTable } from "@/components/dashboard/CandidateResultsTable";
@@ -12,23 +13,30 @@ import { ArtifactClassificationCard } from "@/components/dashboard/ArtifactClass
 import { DeviceProfileCard } from "@/components/dashboard/DeviceProfileCard";
 import { RuntimeRouteCard } from "@/components/dashboard/RuntimeRouteCard";
 import { AgentReasoningCard } from "@/components/dashboard/AgentReasoningCard";
+import { useJob } from "@/components/lib/useJob";
 
-interface JobDetailPageProps {
-    params: Promise<{
-        jobId: string;
-    }>;
-}
-
-export default async function JobDetailPage({ params }: JobDetailPageProps) {
-    const { jobId } = await params;
-    const job = mockJobs.find((item) => item.id === jobId);
-
-    if (!job) {
-        notFound();
-    }
+export default function JobDetailPage() {
+    const params = useParams<{ jobId: string }>();
+    const jobId = typeof params.jobId === "string" ? params.jobId : null;
+    const { job, loading } = useJob(jobId);
 
     return (
         <AppShell>
+            {loading ? (
+                <div className="flex h-64 items-center justify-center text-sm text-zinc-500">
+                    Loading job…
+                </div>
+            ) : !job ? (
+                <div className="flex h-64 flex-col items-center justify-center gap-3 text-sm text-zinc-500">
+                    <p>Job not found.</p>
+                    <Link
+                        href="/jobs"
+                        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-emerald-400/40 hover:text-emerald-300"
+                    >
+                        Back to jobs
+                    </Link>
+                </div>
+            ) : (
             <div className="space-y-3">
                 <Link
                     href="/jobs"
@@ -150,6 +158,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                     </div>
                 </section>
             </div>
+            )}
         </AppShell>
     );
 }
