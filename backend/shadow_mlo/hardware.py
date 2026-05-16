@@ -35,10 +35,15 @@ def _nvidia_smi() -> dict | None:
         parts = [p.strip() for p in out.split(",")]
         if len(parts) < 3:
             return None
+        # GB10 (DGX Spark) uses unified memory — memory.total reports "[N/A]"
+        try:
+            vram_mb = int(float(parts[2]))
+        except ValueError:
+            vram_mb = 128 * 1024   # 128 GB unified on GB10
         return {
             "name": parts[0],
             "compute_cap": parts[1],
-            "vram_mb": int(float(parts[2])),
+            "vram_mb": vram_mb,
         }
     except Exception:
         return None
@@ -78,7 +83,7 @@ def _precisions_for_sm(compute_cap: str) -> list[str]:
 
 def _device_name(gpu_name: str, compute_cap: str) -> str:
     name_lower = gpu_name.lower()
-    if "dgx" in name_lower or ("gb" in name_lower and "grace" in name_lower.replace("grace", "")):
+    if "dgx" in name_lower or "gb10" in name_lower:
         return "DGX Spark"
     sm_map = {
         "10.0": "Blackwell",
