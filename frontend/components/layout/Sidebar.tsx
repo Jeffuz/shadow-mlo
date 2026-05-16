@@ -38,14 +38,6 @@ export function Sidebar() {
                     </Link>
                 ))}
             </nav>
-
-            <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-                <p className="text-xs font-medium text-zinc-300">Local Runtime</p>
-                <p className="mt-1 text-xs leading-5 text-zinc-500">
-                    Jobs, reports, artifacts, and memory are stored locally for the Spark
-                    demo.
-                </p>
-            </div>
         </aside>
     );
 }

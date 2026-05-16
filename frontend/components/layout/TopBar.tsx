@@ -3,9 +3,6 @@ export function TopBar() {
         <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/85 px-4 py-3 backdrop-blur lg:px-5">
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-400">
-                        Spark Track
-                    </p>
                     <h2 className="mt-0.5 text-lg font-semibold text-white">
                         Autonomous Edge Model Optimization
                     </h2>
