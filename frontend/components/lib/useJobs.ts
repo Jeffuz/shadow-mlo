@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react";
 import type { ShadowJob } from "../types/shadow-mlo";
-import { getLatestJob, API_BASE } from "./api";
+import { getAllJobs, API_BASE } from "./api";
 
-export function useLatestJob() {
-    const [job, setJob] = useState<ShadowJob | null>(null);
+export function useJobs() {
+    const [jobs, setJobs] = useState<ShadowJob[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let alive = true;
 
-        getLatestJob().then((data) => {
+        getAllJobs().then((data) => {
             if (alive) {
-                setJob(data);
+                setJobs(data);
                 setLoading(false);
             }
         });
@@ -25,7 +25,13 @@ export function useLatestJob() {
             try {
                 const { type, data } = JSON.parse(e.data);
                 if (type === "job_updated" && data?.job) {
-                    setJob(data.job);
+                    setJobs((prev) => {
+                        const idx = prev.findIndex((j) => j.id === data.job.id);
+                        if (idx === -1) return [data.job, ...prev];
+                        const next = [...prev];
+                        next[idx] = data.job;
+                        return next;
+                    });
                     setLoading(false);
                 }
             } catch {
@@ -39,5 +45,5 @@ export function useLatestJob() {
         };
     }, []);
 
-    return { job, loading };
+    return { jobs, loading };
 }

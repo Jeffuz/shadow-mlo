@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { mockJobs } from "@/components/mock/mockJobs";
+import { useJobs } from "@/components/lib/useJobs";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { JobStatus } from "@/components/types/shadow-mlo";
 
@@ -18,15 +18,16 @@ const filters: { label: string; value: JobFilter }[] = [
 
 export default function JobsPage() {
     const [activeFilter, setActiveFilter] = useState<JobFilter>("all");
+    const { jobs } = useJobs();
 
-    const running = mockJobs.filter((job) => job.status === "running").length;
-    const completed = mockJobs.filter((job) => job.status === "completed").length;
-    const failed = mockJobs.filter((job) => job.status === "failed").length;
+    const running = jobs.filter((job) => job.status === "running").length;
+    const completed = jobs.filter((job) => job.status === "completed").length;
+    const failed = jobs.filter((job) => job.status === "failed").length;
 
     const filteredJobs = useMemo(() => {
-        if (activeFilter === "all") return mockJobs;
-        return mockJobs.filter((job) => job.status === activeFilter);
-    }, [activeFilter]);
+        if (activeFilter === "all") return jobs;
+        return jobs.filter((job) => job.status === activeFilter);
+    }, [activeFilter, jobs]);
 
     return (
         <AppShell>
@@ -177,8 +178,8 @@ export default function JobsPage() {
     );
 
     function getFilterCount(filter: JobFilter) {
-        if (filter === "all") return mockJobs.length;
-        return mockJobs.filter((job) => job.status === filter).length;
+        if (filter === "all") return jobs.length;
+        return jobs.filter((job) => job.status === filter).length;
     }
 }
 
