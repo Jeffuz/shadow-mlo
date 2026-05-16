@@ -32,8 +32,11 @@ def build_optimizer(profile: HardwareProfile):
         from shadow_mlo.optimizer.tensorrt_optimizer import TensorRTOptimizer
         return TensorRTOptimizer()
     if profile.optimizer_tier == "ort":
-        from shadow_mlo.optimizer.ort_optimizer import ORTOptimizer
-        return ORTOptimizer(vram_mb=profile.vram_mb)
+        try:
+            from shadow_mlo.optimizer.ort_optimizer import ORTOptimizer
+            return ORTOptimizer(vram_mb=profile.vram_mb)
+        except ImportError:
+            logger.warning("ORT optimizer route selected, but ORTOptimizer is not implemented; falling back to MockOptimizer.")
     return MockOptimizer()
 
 

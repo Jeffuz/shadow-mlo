@@ -85,7 +85,7 @@ def _initial_configs(
     past_summary = json.dumps(past_wins, indent=2) if past_wins else "No prior runs for this model type."
     precisions_str = ", ".join(f'"{p}"' for p in supported_precisions)
 
-    prompt = f"""You are an ML optimization expert. Given this ONNX model metadata, decide which TensorRT optimization configs to try first.
+    prompt = f"""You are an ML optimization expert. Given this {metadata.artifact_type} model metadata, decide which {metadata.optimization_runtime} optimization configs to try first.
 
 Model: {metadata.summary()}
 Op types: {metadata.op_types}
@@ -133,7 +133,7 @@ def _build_plan(
     reasoning: str,
 ) -> list[str]:
     plan = [
-        f"Use TensorRT route because artifact is ONNX-based.",
+        f"Use {metadata.optimization_runtime} route because artifact is {metadata.artifact_type}-based.",
         f"Establish FP32 baseline for quality reference and speedup calculation.",
     ]
     if reasoning:
@@ -294,8 +294,9 @@ class ShadowAgent:
             parameters=metadata.parameters_str,
             contextLength=metadata.input_shape_str,
             precision="FP32",
-            runtimePath="TensorRT",
+            runtimePath=metadata.optimization_runtime,
         )
+        job.runtimePath = metadata.optimization_runtime
         self._set_timeline(job, "classified", "success", _now())
         self._save_and_broadcast(job)
 
@@ -316,6 +317,9 @@ class ShadowAgent:
         job.add_event("device_profile", f"Loaded profile for {self._hw.display_name}", "success")
         self._set_timeline(job, "profile", "success", _now())
         self._save_and_broadcast(job)
+
+        if not metadata.optimization_supported:
+            return self._fail_unsupported(job, metadata)
 
         # ── Plan (Nemotron) ───────────────────────────────────────────────────
         self._set_timeline(job, "planned", "running")
@@ -473,15 +477,21 @@ class ShadowAgent:
                     c.artifact   = result.compile.engine_path
                 return
         # Not found — add new
-        job.candidates.append(Candidate(name=name, runtime="TensorRT", status=status))
+        job.candidates.append(Candidate(name=name, runtime=job.runtimePath, status=status))
 
     def _init_job(self, model_path: Path) -> Job:
+        artifact_type = {
+            ".onnx": "ONNX",
+            ".pt": "PyTorch",
+            ".pth": "PyTorch",
+            ".gguf": "GGUF",
+        }.get(model_path.suffix.lower(), "Unknown")
         return Job(
             id=make_job_id(),
             artifactName=model_path.name,
-            artifactType="ONNX",
+            artifactType=artifact_type,
             modelFamily="Unknown",
-            runtimePath="TensorRT",
+            runtimePath="Pending",
             targetDevice=self._hw.name,
             status="running",
             startedAt=datetime.now().strftime("%I:%M:%S %p"),
@@ -489,6 +499,28 @@ class ShadowAgent:
             timeline=make_initial_timeline(),
             candidates=[],
         )
+
+    def _fail_unsupported(self, job: Job, metadata: ArtifactMetadata) -> Job:
+        reason = metadata.unsupported_reason or f"{metadata.artifact_type} optimization is not implemented yet."
+        job.status = "failed"
+        job.stage = "unsupported_artifact"
+        job.plan = [reason]
+        job.add_event("route_artifact", reason, "failed")
+        self._set_timeline(job, "planned", "failed", _now())
+        self._set_timeline(job, "building", "failed", _now())
+        self._set_timeline(job, "benchmark", "failed", _now())
+        self._set_timeline(job, "report", "failed", _now())
+        job.recommendation = Recommendation(
+            candidate="Unsupported",
+            artifact="",
+            reason=reason,
+            speedup="—",
+            quality="—",
+            memoryReduction="—",
+        )
+        self._save_and_broadcast(job)
+        events.broadcast("pipeline_error", {"job_id": job.id, "error": reason})
+        return job
 
     def _set_timeline(self, job: Job, stage_id: str, status: str, timestamp: str = None):
         for event in job.timeline:

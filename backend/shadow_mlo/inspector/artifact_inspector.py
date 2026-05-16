@@ -1,5 +1,5 @@
-import hashlib
 import logging
+import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -33,20 +33,28 @@ class ArtifactMetadata:
     artifact_name: str
     file_size_mb: float
     sha256: str
-    opset_version: int
-    inputs: list
-    outputs: list
-    op_types: list
-    parameter_count: int
-    has_dynamic_shapes: bool
+    artifact_format: str
+    opset_version: int | None = None
+    inputs: list = field(default_factory=list)
+    outputs: list = field(default_factory=list)
+    op_types: list = field(default_factory=list)
+    parameter_count: int | None = None
+    has_dynamic_shapes: bool = False
     likely_type: str = "unknown"   # "cnn" | "cnn_classifier" | "transformer" | "rnn" | "mlp"
+    optimization_runtime: str = "Unsupported"
+    optimization_supported: bool = False
+    unsupported_reason: str | None = None
 
     @property
     def artifact_type(self) -> str:
-        return "ONNX"
+        return self.artifact_format
 
     @property
     def model_family(self) -> str:
+        if self.artifact_format == "GGUF":
+            return "LLM"
+        if self.artifact_format == "PyTorch":
+            return "Unknown"
         return {
             "cnn":            "CNN",
             "cnn_classifier": "CNN",
@@ -58,6 +66,8 @@ class ArtifactMetadata:
     @property
     def parameters_str(self) -> str:
         n = self.parameter_count
+        if n is None:
+            return "unknown"
         if n >= 1_000_000_000:
             return f"{n / 1_000_000_000:.1f}B"
         if n >= 1_000_000:
@@ -75,12 +85,13 @@ class ArtifactMetadata:
     def summary(self) -> str:
         return (
             f"Model: {self.artifact_name} | "
+            f"Format: {self.artifact_format} | "
             f"Type: {self.likely_type} | "
             f"Size: {self.file_size_mb:.1f}MB | "
-            f"Params: {self.parameter_count:,} | "
+            f"Params: {self.parameters_str} | "
             f"Inputs: {[i.shape for i in self.inputs]} | "
             f"Dynamic: {self.has_dynamic_shapes} | "
-            f"Opset: {self.opset_version}"
+            f"Opset: {self.opset_version if self.opset_version is not None else 'n/a'}"
         )
 
 
@@ -131,12 +142,40 @@ def _infer_model_type(op_types: list) -> str:
     return "unknown"
 
 
-def inspect(model_path: Path) -> ArtifactMetadata:
-    path = Path(model_path)
-    logger.info(f"Inspecting {path.name}")
+def _format_for_suffix(path: Path) -> str:
+    return {
+        ".onnx": "ONNX",
+        ".pt": "PyTorch",
+        ".pth": "PyTorch",
+        ".gguf": "GGUF",
+    }.get(path.suffix.lower(), "Unknown")
 
-    file_size_mb = path.stat().st_size / (1024 * 1024)
-    sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+
+def _file_fingerprint(path: Path) -> tuple[float, str]:
+    return (
+        path.stat().st_size / (1024 * 1024),
+        hashlib.sha256(path.read_bytes()).hexdigest(),
+    )
+
+
+def _unsupported_metadata(path: Path, reason: str) -> ArtifactMetadata:
+    file_size_mb, sha256 = _file_fingerprint(path)
+    artifact_format = _format_for_suffix(path)
+    likely_type = "llm" if artifact_format == "GGUF" else "unknown"
+    return ArtifactMetadata(
+        path=str(path),
+        artifact_name=path.name,
+        file_size_mb=file_size_mb,
+        sha256=sha256,
+        artifact_format=artifact_format,
+        has_dynamic_shapes=False,
+        likely_type=likely_type,
+        unsupported_reason=reason,
+    )
+
+
+def _inspect_onnx(path: Path) -> ArtifactMetadata:
+    file_size_mb, sha256 = _file_fingerprint(path)
 
     model = onnx.load(str(path))
     onnx.checker.check_model(model)
@@ -174,6 +213,7 @@ def inspect(model_path: Path) -> ArtifactMetadata:
         artifact_name=path.name,
         file_size_mb=file_size_mb,
         sha256=sha256,
+        artifact_format="ONNX",
         opset_version=opset_version,
         inputs=inputs,
         outputs=outputs,
@@ -181,4 +221,26 @@ def inspect(model_path: Path) -> ArtifactMetadata:
         parameter_count=parameter_count,
         has_dynamic_shapes=has_dynamic_shapes,
         likely_type=likely_type,
+        optimization_runtime="TensorRT",
+        optimization_supported=True,
     )
+
+
+def inspect(model_path: Path) -> ArtifactMetadata:
+    path = Path(model_path)
+    logger.info(f"Inspecting {path.name}")
+
+    suffix = path.suffix.lower()
+    if suffix == ".onnx":
+        return _inspect_onnx(path)
+    if suffix in {".pt", ".pth"}:
+        return _unsupported_metadata(
+            path,
+            "PyTorch artifacts are detected and classified, but optimization is not implemented yet. Export to ONNX to use the current TensorRT path.",
+        )
+    if suffix == ".gguf":
+        return _unsupported_metadata(
+            path,
+            "GGUF artifacts are detected and classified, but llama.cpp or TensorRT-LLM optimization is not implemented yet.",
+        )
+    return _unsupported_metadata(path, f"Unsupported artifact extension: {suffix or '<none>'}.")

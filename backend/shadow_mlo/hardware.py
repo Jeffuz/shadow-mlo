@@ -57,14 +57,6 @@ def _has_tensorrt() -> bool:
         return False
 
 
-def _has_tensorrt() -> bool:
-    try:
-        import tensorrt  # noqa: F401
-        return True
-    except ImportError:
-        return False
-
-
 def _has_cuda_ort() -> bool:
     try:
         import onnxruntime as ort
