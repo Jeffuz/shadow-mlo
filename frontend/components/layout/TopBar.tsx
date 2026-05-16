@@ -23,7 +23,7 @@ export function TopBar() {
     return (
         <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/85 px-4 py-3 backdrop-blur lg:px-5">
             <div className="flex items-center justify-between gap-4">
-                <Link href="/" className="flex shrink-0 items-center">
+                <Link href="/" className="flex shrink-0 items-center px-1">
                     <Image
                         src="/logos.png"
                         alt="Shadow-MLO logo"

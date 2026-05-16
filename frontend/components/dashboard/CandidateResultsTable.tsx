@@ -83,7 +83,7 @@ export function CandidateResultsTable({
 
                                     <Td>
                                         <code className="block max-w-[260px] break-all font-mono text-[11px] leading-5 text-emerald-300">
-                                            {candidate.artifact ?? "—"}
+                                            {formatArtifactName(candidate.artifact)}
                                         </code>
                                     </Td>
                                 </tr>
@@ -198,6 +198,13 @@ function formatCandidatePrimary(name: string) {
 function formatCandidateSecondary(name: string) {
     const match = name.match(/\((.*?)\)/);
     return match?.[1]?.trim() ?? "";
+}
+
+function formatArtifactName(artifact?: string) {
+    if (!artifact) return "—";
+    const normalizedArtifact = artifact.replaceAll("\\", "/");
+    const parts = normalizedArtifact.split("/").filter(Boolean);
+    return parts.at(-1) ?? artifact;
 }
 
 function getDecisionDescription(decision: string) {

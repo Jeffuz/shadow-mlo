@@ -61,7 +61,7 @@ function Meta({
 }) {
     return (
         <span className="whitespace-nowrap">
-            <span className="mr-1 uppercase tracking-wide text-zinc-600">
+            <span className="mr-1 uppercase tracking-wide text-zinc-400">
                 {label}:
             </span>
             <span className={mono ? "font-mono text-zinc-300" : "text-zinc-300"}>

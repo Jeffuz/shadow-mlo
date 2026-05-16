@@ -56,8 +56,8 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
     }
 
     const recommendation = job.recommendation;
-    const reason = getRecommendationReason(job);
-    const policy = getRecommendationPolicy(job);
+    // const reason = getRecommendationReason(job);
+    // const policy = getRecommendationPolicy(job);
 
     return (
         <section className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] px-4 py-3">
@@ -71,12 +71,13 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
                         {recommendation.artifact}
                     </h3>
 
-                    <p className="mt-2 max-w-5xl text-sm leading-6 text-zinc-300">
-                        {reason}
+                    <p className="mt-3 text-sm leading-6 text-zinc-300">
+                        {job.recommendation.candidate} passed the deployment quality threshold and was
+                        selected as the best deployment artifact.
                     </p>
 
-                    <p className="mt-2 inline-flex rounded-full border border-zinc-700 bg-zinc-950/50 px-2.5 py-1 text-[11px] text-zinc-300">
-                        Policy: {policy}
+                    <p className="mt-3 inline-flex rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] text-zinc-300">
+                        Policy: preserve quality above threshold, then optimize latency and memory.
                     </p>
                 </div>
 
@@ -90,53 +91,53 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
     );
 }
 
-function getRecommendationReason(job: ShadowJob) {
-    const recommendation = job.recommendation;
-    if (!recommendation) return "";
+// function getRecommendationReason(job: ShadowJob) {
+//     const recommendation = job.recommendation;
+//     if (!recommendation) return "";
 
-    const winnerName = recommendation.candidate.toLowerCase();
-    const winner = job.candidates.find((candidate) => {
-        const candidateName = candidate.name.toLowerCase();
-        return candidateName === winnerName || candidate.artifact === recommendation.artifact;
-    });
-    const fp16 = job.candidates.find((candidate) =>
-        candidate.name.toLowerCase().includes("fp16")
-    );
-    const int8 = job.candidates.find((candidate) =>
-        candidate.name.toLowerCase().includes("int8")
-    );
-    const int8Quality = int8?.quality;
-    const int8QualityValue = parsePercent(int8Quality);
+//     const winnerName = recommendation.candidate.toLowerCase();
+//     const winner = job.candidates.find((candidate) => {
+//         const candidateName = candidate.name.toLowerCase();
+//         return candidateName === winnerName || candidate.artifact === recommendation.artifact;
+//     });
+//     const fp16 = job.candidates.find((candidate) =>
+//         candidate.name.toLowerCase().includes("fp16")
+//     );
+//     const int8 = job.candidates.find((candidate) =>
+//         candidate.name.toLowerCase().includes("int8")
+//     );
+//     const int8Quality = int8?.quality;
+//     const int8QualityValue = parsePercent(int8Quality);
 
-    if (winnerName.includes("fp16") && int8QualityValue !== null && int8QualityValue < 99) {
-        return `FP16 was selected because it keeps quality above the deployment threshold while nearly doubling throughput over FP32. INT8 is faster and smaller, but its quality dropped to ${int8Quality}, so Shadow-MLO rejected it for this run.`;
-    }
+//     if (winnerName.includes("fp16") && int8QualityValue !== null && int8QualityValue < 99) {
+//         return `FP16 was selected because it keeps quality above the deployment threshold while nearly doubling throughput over FP32. INT8 is faster and smaller, but its quality dropped to ${int8Quality}, so Shadow-MLO rejected it for this run.`;
+//     }
 
-    if (winnerName.includes("int8") && int8) {
-        const latency = winner?.latency ?? int8.latency ?? "the lowest latency";
-        const fp16Quality = fp16?.quality ?? "higher quality";
+//     if (winnerName.includes("int8") && int8) {
+//         const latency = winner?.latency ?? int8.latency ?? "the lowest latency";
+//         const fp16Quality = fp16?.quality ?? "higher quality";
 
-        return `INT8 entropy per-channel was selected because it passed the configured 98% quality threshold while delivering the best deployment profile: ${recommendation.speedup ?? "best"} speedup, ${latency} latency, and ${recommendation.memoryReduction ?? "strong"} memory reduction versus FP32. FP16 preserved more quality at ${fp16Quality}, but its latency and memory savings were weaker, so Shadow-MLO selected INT8 for this latency-prioritized run.`;
-    }
+//         return `INT8 entropy per-channel was selected because it passed the configured 98% quality threshold while delivering the best deployment profile: ${recommendation.speedup ?? "best"} speedup, ${latency} latency, and ${recommendation.memoryReduction ?? "strong"} memory reduction versus FP32. FP16 preserved more quality at ${fp16Quality}, but its latency and memory savings were weaker, so Shadow-MLO selected INT8 for this latency-prioritized run.`;
+//     }
 
-    return recommendation.reason;
-}
+//     return recommendation.reason;
+// }
 
-function getRecommendationPolicy(job: ShadowJob) {
-    const winnerName = job.recommendation?.candidate.toLowerCase() ?? "";
+// function getRecommendationPolicy(job: ShadowJob) {
+//     const winnerName = job.recommendation?.candidate.toLowerCase() ?? "";
 
-    if (winnerName.includes("int8")) {
-        return "minimum quality 98%, optimize for latency first, memory second.";
-    }
+//     if (winnerName.includes("int8")) {
+//         return "minimum quality 98%, optimize for latency first, memory second.";
+//     }
 
-    return "preserve quality above the deployment threshold, then optimize latency and memory.";
-}
+//     return "preserve quality above the deployment threshold, then optimize latency and memory.";
+// }
 
-function parsePercent(value?: string) {
-    if (!value) return null;
-    const parsed = Number.parseFloat(value.replace("%", ""));
-    return Number.isFinite(parsed) ? parsed : null;
-}
+// function parsePercent(value?: string) {
+//     if (!value) return null;
+//     const parsed = Number.parseFloat(value.replace("%", ""));
+//     return Number.isFinite(parsed) ? parsed : null;
+// }
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
     return (
