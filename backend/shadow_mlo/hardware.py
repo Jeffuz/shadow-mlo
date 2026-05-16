@@ -57,27 +57,35 @@ def _has_tensorrt() -> bool:
         return False
 
 
-def _has_tensorrt_llm() -> bool:
+def _has_tensorrt() -> bool:
     try:
-        import tensorrt_llm  # noqa: F401
+        import tensorrt  # noqa: F401
         return True
     except ImportError:
         return False
 
 
+def _has_cuda_ort() -> bool:
+    try:
+        import onnxruntime as ort
+        return "CUDAExecutionProvider" in ort.get_available_providers()
+    except ImportError:
+        return False
+
+
 def _precisions_for_sm(compute_cap: str) -> list[str]:
-    """Return LLM-relevant precisions supported by this GPU generation."""
+    """Return TensorRT-supported precisions for this GPU generation."""
     try:
         major, minor = compute_cap.split(".")
         sm = int(major) * 10 + int(minor)
     except Exception:
-        return ["BF16"]
+        return ["fp32", "fp16"]
 
-    precisions = ["BF16", "FP16", "INT8"]
+    precisions = ["fp32", "fp16", "int8"]
     if sm >= 89:    # Ada Lovelace and above
-        precisions.append("FP8")
+        precisions.append("fp8")
     if sm >= 100:   # Blackwell (GB10 DGX Spark)
-        precisions.append("NVFP4 if supported")
+        precisions.append("nvfp4")
     return precisions
 
 
@@ -129,19 +137,24 @@ def detect() -> HardwareProfile:
     device_name = _device_name(name, compute_cap)
     budget = _memory_budget(name, vram_mb)
 
-    if has_trt_llm:
-        tier = "tensorrt_llm"
-        logger.info(f"Hardware: {device_name} — TensorRT-LLM mode")
+    has_cuda = _has_cuda_ort()
+
+    if has_trt:
+        tier = "tensorrt"
+        logger.info(f"Hardware: {device_name} — TensorRT mode")
+    elif has_cuda:
+        tier = "ort"
+        logger.info(f"Hardware: {device_name} — ONNX Runtime GPU mode")
     else:
         tier = "mock"
-        logger.warning(f"Hardware: {device_name} — TensorRT-LLM not found, running mock builds")
+        logger.warning(f"Hardware: {device_name} — no TensorRT/CUDA, running mock builds")
 
     return HardwareProfile(
         name=device_name,
         display_name=f"{device_name} ({vram_mb // 1024}GB)",
-        cuda=True,
+        cuda=has_cuda,
         tensorrt=has_trt,
-        tensorrt_llm=has_trt_llm,
+        tensorrt_llm=False,
         compute_capability=compute_cap,
         vram_mb=vram_mb,
         memory_budget=budget,

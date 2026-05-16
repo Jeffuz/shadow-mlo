@@ -6,44 +6,90 @@ from typing import Optional
 
 
 class Precision(str, Enum):
-    BF16  = "BF16"
-    FP16  = "FP16"
-    INT8  = "INT8"    # weight-only quantization
-    FP8   = "FP8"
-    NVFP4 = "NVFP4"
+    FP32  = "fp32"
+    FP16  = "fp16"
+    INT8  = "int8"
+    FP8   = "fp8"
+    NVFP4 = "nvfp4"
 
 
 @dataclass
-class BuildConfig:
-    name: str              # "BF16 Baseline", "INT8 Weight-Only", "NVFP4"
+class OptimizationConfig:
     precision: Precision
-    runtime: str = "TensorRT-LLM"
-    condition: Optional[str] = None   # e.g., "Only run if support is detected"
+    workspace_mb: int = 4096
+    calibration_algo: str = "entropy"   # entropy | percentile | max
+    per_channel: bool = False
+    extra_flags: dict = None
 
-    def artifact_suffix(self) -> str:
-        return self.precision.value.lower()
+    def label(self) -> str:
+        label = self.precision.value
+        if self.precision == Precision.INT8:
+            label += f"_{self.calibration_algo}"
+            if self.per_channel:
+                label += "_perchannel"
+        return label
 
-    def candidate_artifact(self, base_name: str) -> str:
-        return f"{base_name}_{self.artifact_suffix()}/"
+    def display_name(self) -> str:
+        names = {
+            Precision.FP32:  "FP32 Baseline",
+            Precision.FP16:  "FP16",
+            Precision.INT8:  f"INT8 ({self.calibration_algo}{'  per-channel' if self.per_channel else ''})",
+            Precision.FP8:   "FP8",
+            Precision.NVFP4: "NVFP4",
+        }
+        return names.get(self.precision, self.label())
 
 
 @dataclass
-class BuildResult:
-    config: BuildConfig
-    status: str              # "success" | "failed"
-    latency_ms_per_token: Optional[float] = None
-    throughput_toks_per_sec: Optional[float] = None
-    memory_gb: Optional[float] = None
-    quality_pct: Optional[float] = None   # % of BF16 baseline quality (100 = identical)
-    artifact_path: Optional[str] = None
+class CompileResult:
+    config: OptimizationConfig
+    success: bool
+    engine_path: Optional[str]
+    compile_time_s: float
     error: Optional[str] = None
 
+
+@dataclass
+class BenchmarkResult:
+    config: OptimizationConfig
+    latency_mean_ms: float
+    latency_p99_ms: float
+    throughput_fps: float
+    memory_mb: float
+
+
+@dataclass
+class ValidationResult:
+    config: OptimizationConfig
+    accuracy_delta: float
+    max_output_diff: float
+    passed: bool
+
+
+@dataclass
+class CandidateResult:
+    compile: CompileResult
+    benchmark: Optional[BenchmarkResult]
+    validation: Optional[ValidationResult]
+
     def failed(self) -> bool:
-        return self.status == "failed"
+        return not self.compile.success
+
+    def similarity_pct(self) -> Optional[float]:
+        if self.validation:
+            return round((1 - self.validation.accuracy_delta) * 100, 1)
+        return None
 
 
-class LLMOptimizerBackend(ABC):
+class OptimizerBackend(ABC):
     @abstractmethod
-    def build(self, artifact_path: Path, config: BuildConfig) -> BuildResult:
-        """Build a TensorRT-LLM engine for the given artifact and precision config."""
+    def compile(self, onnx_path: Path, config: OptimizationConfig) -> CompileResult:
+        ...
+
+    @abstractmethod
+    def benchmark(self, engine_path: Path, config: OptimizationConfig) -> BenchmarkResult:
+        ...
+
+    @abstractmethod
+    def validate(self, onnx_path: Path, engine_path: Path, config: OptimizationConfig) -> ValidationResult:
         ...

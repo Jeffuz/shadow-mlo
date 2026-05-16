@@ -1,169 +1,184 @@
-import json
+import hashlib
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+
+import onnx
+from onnx import TensorProto
 
 logger = logging.getLogger(__name__)
+
+DTYPE_MAP = {
+    TensorProto.FLOAT:   "float32",
+    TensorProto.FLOAT16: "float16",
+    TensorProto.DOUBLE:  "float64",
+    TensorProto.INT32:   "int32",
+    TensorProto.INT64:   "int64",
+    TensorProto.UINT8:   "uint8",
+    TensorProto.INT8:    "int8",
+    TensorProto.BOOL:    "bool",
+}
+
+
+@dataclass
+class TensorInfo:
+    name: str
+    shape: list
+    dtype: str
 
 
 @dataclass
 class ArtifactMetadata:
     path: str
     artifact_name: str
-    artifact_type: str    # "Hugging Face Transformer" | "GGUF" | "PyTorch Checkpoint"
-    model_family: str     # "LLM" | "VLM" | "Embedding" | "Diffusion"
-    architecture: str     # "LlamaForCausalLM", "MistralForCausalLM", etc.
-    parameters: str       # "1.3B", "7B", "70B"
-    context_length: str   # "2048", "4096", "131072"
-    default_precision: str  # "BF16", "FP16", "FP32"
+    file_size_mb: float
+    sha256: str
+    opset_version: int
+    inputs: list
+    outputs: list
+    op_types: list
+    parameter_count: int
+    has_dynamic_shapes: bool
+    likely_type: str = "unknown"   # "cnn" | "cnn_classifier" | "transformer" | "rnn" | "mlp"
+
+    @property
+    def artifact_type(self) -> str:
+        return "ONNX"
+
+    @property
+    def model_family(self) -> str:
+        return {
+            "cnn":            "CNN",
+            "cnn_classifier": "CNN",
+            "transformer":    "Transformer",
+            "rnn":            "RNN",
+            "mlp":            "MLP",
+        }.get(self.likely_type, "Unknown")
+
+    @property
+    def parameters_str(self) -> str:
+        n = self.parameter_count
+        if n >= 1_000_000_000:
+            return f"{n / 1_000_000_000:.1f}B"
+        if n >= 1_000_000:
+            return f"{n / 1_000_000:.1f}M"
+        if n >= 1_000:
+            return f"{n / 1_000:.1f}K"
+        return str(n)
+
+    @property
+    def input_shape_str(self) -> str:
+        if self.inputs:
+            return str(self.inputs[0].shape)
+        return "unknown"
 
     def summary(self) -> str:
         return (
-            f"Artifact: {self.artifact_name} | "
-            f"Type: {self.artifact_type} | "
-            f"Family: {self.model_family} | "
-            f"Arch: {self.architecture} | "
-            f"Params: {self.parameters} | "
-            f"Context: {self.context_length} | "
-            f"Precision: {self.default_precision}"
+            f"Model: {self.artifact_name} | "
+            f"Type: {self.likely_type} | "
+            f"Size: {self.file_size_mb:.1f}MB | "
+            f"Params: {self.parameter_count:,} | "
+            f"Inputs: {[i.shape for i in self.inputs]} | "
+            f"Dynamic: {self.has_dynamic_shapes} | "
+            f"Opset: {self.opset_version}"
         )
 
 
-def _format_params(count: int) -> str:
-    if count >= 1_000_000_000:
-        return f"{count / 1_000_000_000:.1f}B"
-    if count >= 1_000_000:
-        return f"{count / 1_000_000:.0f}M"
-    return str(count)
-
-
-def _infer_family(arch: str, config: dict) -> str:
-    arch_lower = arch.lower()
-    if any(k in arch_lower for k in ("causal", "gpt", "llama", "mistral", "falcon", "phi", "gemma", "qwen", "deepseek", "nemotron")):
-        return "LLM"
-    if any(k in arch_lower for k in ("vlm", "vision", "clip", "blip", "llava", "idefics", "paligemma")):
-        return "VLM"
-    if any(k in arch_lower for k in ("embed", "sentence", "bert", "roberta", "e5", "bge")):
-        return "Embedding"
-    if "diffus" in arch_lower or "unet" in arch_lower or "dit" in arch_lower:
-        return "Diffusion"
-    # Fall back to model_type
-    model_type = config.get("model_type", "").lower()
-    if any(k in model_type for k in ("llama", "gpt", "mistral", "falcon", "phi", "gemma")):
-        return "LLM"
-    return "LLM"
-
-
-def _estimate_params_from_config(config: dict) -> int:
-    """Rough parameter estimate from model architecture config."""
-    hidden = config.get("hidden_size", 0)
-    layers = config.get("num_hidden_layers", 0)
-    vocab = config.get("vocab_size", 0)
-    intermediate = config.get("intermediate_size", hidden * 4 if hidden else 0)
-
-    if not hidden or not layers:
-        return 0
-
-    embed = vocab * hidden if vocab else 0
-    attn_per_layer = 4 * hidden * hidden
-    ffn_per_layer = 2 * hidden * intermediate
-    return embed + layers * (attn_per_layer + ffn_per_layer)
-
-
-def _params_from_safetensors_index(index_path: Path) -> Optional[int]:
-    """Read total parameter count from safetensors index metadata."""
+def _shape_from_type_proto(type_proto) -> list:
+    shape = []
     try:
-        index = json.loads(index_path.read_text())
-        total_bytes = index.get("metadata", {}).get("total_size", 0)
-        if total_bytes:
-            # total_size is bytes; bfloat16 = 2 bytes per param
-            return total_bytes // 2
+        for dim in type_proto.tensor_type.shape.dim:
+            if dim.HasField("dim_param"):
+                shape.append(dim.dim_param)
+            elif dim.HasField("dim_value"):
+                shape.append(dim.dim_value)
+            else:
+                shape.append("?")
     except Exception:
         pass
-    return None
+    return shape
 
 
-def _params_from_config_metadata(path: Path) -> Optional[int]:
-    """Some models store param count directly in config extras."""
-    for fname in ("config.json", "generation_config.json"):
-        cfg_path = path / fname
-        if cfg_path.exists():
-            try:
-                data = json.loads(cfg_path.read_text())
-                for key in ("num_parameters", "total_parameters", "model_parameters"):
-                    if key in data:
-                        return int(data[key])
-            except Exception:
-                pass
-    return None
+def _dtype_from_type_proto(type_proto) -> str:
+    try:
+        return DTYPE_MAP.get(type_proto.tensor_type.elem_type, "unknown")
+    except Exception:
+        return "unknown"
 
 
-def inspect(artifact_path: Path) -> ArtifactMetadata:
-    path = Path(artifact_path)
-    artifact_name = path.name
+def _count_parameters(model: onnx.ModelProto) -> int:
+    total = 0
+    for init in model.graph.initializer:
+        count = 1
+        for dim in init.dims:
+            count *= dim
+        total += count
+    return total
 
-    # ── GGUF single-file format ────────────────────────────────────────────
-    if path.is_file() and path.suffix == ".gguf":
-        return ArtifactMetadata(
-            path=str(path),
-            artifact_name=artifact_name,
-            artifact_type="GGUF",
-            model_family="LLM",
-            architecture="unknown",
-            parameters="unknown",
-            context_length="unknown",
-            default_precision="Q4_K_M",
+
+def _infer_model_type(op_types: list) -> str:
+    op_set = set(op_types)
+    if "Attention" in op_set or "MultiHeadAttention" in op_set or "Gelu" in op_set:
+        return "transformer"
+    if "LSTM" in op_set or "GRU" in op_set or "RNN" in op_set:
+        return "rnn"
+    if "Conv" in op_set and "Gemm" not in op_set:
+        return "cnn"
+    if "Conv" in op_set and "Gemm" in op_set:
+        return "cnn_classifier"
+    if "Gemm" in op_set or "MatMul" in op_set:
+        return "mlp"
+    return "unknown"
+
+
+def inspect(model_path: Path) -> ArtifactMetadata:
+    path = Path(model_path)
+    logger.info(f"Inspecting {path.name}")
+
+    file_size_mb = path.stat().st_size / (1024 * 1024)
+    sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    model = onnx.load(str(path))
+    onnx.checker.check_model(model)
+
+    opset_version = model.opset_import[0].version if model.opset_import else 0
+
+    initializer_names = {i.name for i in model.graph.initializer}
+    inputs = [
+        TensorInfo(
+            name=inp.name,
+            shape=_shape_from_type_proto(inp.type),
+            dtype=_dtype_from_type_proto(inp.type),
         )
+        for inp in model.graph.input
+        if inp.name not in initializer_names
+    ]
+    outputs = [
+        TensorInfo(
+            name=out.name,
+            shape=_shape_from_type_proto(out.type),
+            dtype=_dtype_from_type_proto(out.type),
+        )
+        for out in model.graph.output
+    ]
 
-    # ── Hugging Face directory ─────────────────────────────────────────────
-    config_path = path / "config.json"
-    if not config_path.exists():
-        raise ValueError(f"No config.json found in {path}. Not a supported artifact format.")
-
-    config = json.loads(config_path.read_text())
-
-    # Architecture
-    archs = config.get("architectures", [])
-    arch = archs[0] if archs else config.get("model_type", "unknown")
-
-    # Model family
-    family = _infer_family(arch, config)
-
-    # Context length
-    ctx = (
-        config.get("max_position_embeddings")
-        or config.get("max_seq_len")
-        or config.get("n_positions")
-        or config.get("seq_length")
-        or 2048
+    op_types = sorted({node.op_type for node in model.graph.node})
+    parameter_count = _count_parameters(model)
+    has_dynamic_shapes = any(
+        isinstance(dim, str) for inp in inputs for dim in inp.shape
     )
-    context_length = str(ctx)
-
-    # Default precision
-    torch_dtype = config.get("torch_dtype", "bfloat16")
-    precision_map = {"bfloat16": "BF16", "float16": "FP16", "float32": "FP32", "auto": "BF16"}
-    default_precision = precision_map.get(torch_dtype, "BF16")
-
-    # Parameter count — try several sources in order
-    param_count = (
-        _params_from_config_metadata(path)
-        or _params_from_safetensors_index(path / "model.safetensors.index.json")
-        or _estimate_params_from_config(config)
-    )
-    parameters = _format_params(param_count) if param_count else "unknown"
-
-    logger.info(
-        f"Inspected {artifact_name}: {family} | {arch} | {parameters} | ctx={context_length} | {default_precision}"
-    )
+    likely_type = _infer_model_type(op_types)
 
     return ArtifactMetadata(
         path=str(path),
-        artifact_name=artifact_name,
-        artifact_type="Hugging Face Transformer",
-        model_family=family,
-        architecture=arch,
-        parameters=parameters,
-        context_length=context_length,
-        default_precision=default_precision,
+        artifact_name=path.name,
+        file_size_mb=file_size_mb,
+        sha256=sha256,
+        opset_version=opset_version,
+        inputs=inputs,
+        outputs=outputs,
+        op_types=op_types,
+        parameter_count=parameter_count,
+        has_dynamic_shapes=has_dynamic_shapes,
+        likely_type=likely_type,
     )
