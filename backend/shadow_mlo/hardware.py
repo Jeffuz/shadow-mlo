@@ -132,15 +132,16 @@ def detect() -> HardwareProfile:
     compute_cap = gpu["compute_cap"]
     vram_mb = gpu["vram_mb"]
     precisions = _precisions_for_sm(compute_cap)
+    has_cuda = True
     has_trt = _has_tensorrt()
-    has_cuda = _has_cuda_ort()
+    has_cuda_ort = _has_cuda_ort()
     device_name = _device_name(name, compute_cap)
     budget = _memory_budget(name, vram_mb)
 
     if has_trt:
         tier = "tensorrt"
         logger.info(f"Hardware: {device_name} — TensorRT mode")
-    elif has_cuda:
+    elif has_cuda_ort:
         tier = "ort"
         logger.info(f"Hardware: {device_name} — ONNX Runtime GPU mode")
     else:

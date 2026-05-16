@@ -8,7 +8,6 @@ Create and activate a virtual environment:
 
 ```powershell
 python -m venv .venv
-
 ```
 
 Install dependencies:
