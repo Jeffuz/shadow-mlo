@@ -93,7 +93,10 @@ export default function JobDetailPage() {
 
                 <ExecutionTimeline steps={job.timeline} />
 
-                <CandidateResultsTable candidates={job.candidates} />
+                <CandidateResultsTable
+                    candidates={job.candidates}
+                    recommendation={job.recommendation}
+                />
 
 
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_1fr]">

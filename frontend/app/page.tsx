@@ -32,7 +32,10 @@ export default function HomePage() {
           <RecommendationCard job={job} />
           <ExecutionTimeline steps={job.timeline} />
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]">
-            <CandidateResultsTable candidates={job.candidates} />
+            <CandidateResultsTable
+              candidates={job.candidates}
+              recommendation={job.recommendation}
+            />
             <AgentReasoningCard job={job} />
           </div>
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.8fr_1.1fr]">
