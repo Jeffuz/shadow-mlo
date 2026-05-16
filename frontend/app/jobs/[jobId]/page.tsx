@@ -97,13 +97,14 @@ export default function JobDetailPage() {
                 <CandidateResultsTable
                     candidates={job.candidates}
                     recommendation={job.recommendation}
+                    stage={job.stage ?? job.status}
                 />
 
 
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_1fr]">
                     <ArtifactClassificationCard classification={job.classification} />
                     <DeviceProfileCard deviceProfile={job.deviceProfile} />
-                    <AgentPlanCard plan={job.plan} />
+                    <AgentPlanCard plan={job.plan} stage={job.stage ?? job.status} />
                 </div>
 
                 <RuntimeRouteCard job={job} />

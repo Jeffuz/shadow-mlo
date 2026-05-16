@@ -2,18 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { CandidateResult, ShadowJob } from "../types/shadow-mlo";
+import type { CandidateResult, JobStage, JobStatus, ShadowJob } from "../types/shadow-mlo";
 import { StatusBadge } from "../ui/StatusBadge";
 
 interface CandidateResultsTableProps {
     candidates: CandidateResult[];
     recommendation?: ShadowJob["recommendation"];
+    stage?: JobStage | JobStatus;
 }
 
 export function CandidateResultsTable({
     candidates,
     recommendation,
+    stage,
 }: CandidateResultsTableProps) {
+    const loadingCandidates = candidates.length === 0 && isCandidateLoadingStage(stage);
+
     return (
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
             <div className="mb-2">
@@ -40,7 +44,10 @@ export function CandidateResultsTable({
                     </thead>
 
                     <tbody className="divide-y divide-zinc-800 bg-zinc-950/40">
-                        {candidates.map((candidate) => {
+                        {loadingCandidates ? (
+                            <CandidateSkeletonRow />
+                        ) : (
+                            candidates.map((candidate) => {
                             const primaryName = formatCandidatePrimary(candidate.name);
                             const secondaryName = formatCandidateSecondary(candidate.name);
 
@@ -88,12 +95,58 @@ export function CandidateResultsTable({
                                     </Td>
                                 </tr>
                             );
-                        })}
+                            })
+                        )}
                     </tbody>
                 </table>
             </div>
         </section>
     );
+}
+
+function CandidateSkeletonRow() {
+    return (
+        <tr aria-label="Generating candidate results">
+            <Td>
+                <div className="space-y-2">
+                    <div className="h-3 w-28 animate-pulse rounded bg-zinc-800" />
+                    <div className="h-2.5 w-20 animate-pulse rounded bg-zinc-800" />
+                </div>
+            </Td>
+            <Td>
+                <SkeletonCell width="w-20" />
+            </Td>
+            <Td>
+                <SkeletonPill />
+            </Td>
+            <Td>
+                <SkeletonPill />
+            </Td>
+            <Td>
+                <SkeletonCell width="w-16" />
+            </Td>
+            <Td>
+                <SkeletonCell width="w-20" />
+            </Td>
+            <Td>
+                <SkeletonCell width="w-16" />
+            </Td>
+            <Td>
+                <SkeletonCell width="w-14" />
+            </Td>
+            <Td>
+                <SkeletonCell width="w-44" />
+            </Td>
+        </tr>
+    );
+}
+
+function SkeletonCell({ width }: { width: string }) {
+    return <div className={`h-3 animate-pulse rounded bg-zinc-800 ${width}`} />;
+}
+
+function SkeletonPill() {
+    return <div className="h-5 w-24 animate-pulse rounded-full bg-zinc-800" />;
 }
 
 function DecisionBadge({ decision }: { decision: string }) {
@@ -280,6 +333,20 @@ function getCandidateDecision(
     }
 
     return "Evaluated";
+}
+
+function isCandidateLoadingStage(stage?: JobStage | JobStatus) {
+    return (
+        stage === "idle" ||
+        stage === "queued" ||
+        stage === "running" ||
+        stage === "artifact_detected" ||
+        stage === "classified" ||
+        stage === "device_profile_loaded" ||
+        stage === "plan_generated" ||
+        stage === "building_candidates" ||
+        stage === "benchmarking"
+    );
 }
 
 function parsePercent(value?: string) {

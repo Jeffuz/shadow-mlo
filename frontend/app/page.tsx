@@ -33,11 +33,12 @@ export default function HomePage() {
             <CandidateResultsTable
               candidates={job.candidates}
               recommendation={job.recommendation}
+              stage={job.stage ?? job.status}
             />
             <AgentReasoningCard job={job} />
           </div>
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.8fr_1.1fr]">
-            <AgentPlanCard plan={job.plan} />
+            <AgentPlanCard plan={job.plan} stage={job.stage ?? job.status} />
             <ArtifactClassificationCard classification={job.classification} />
             <DeviceProfileCard deviceProfile={job.deviceProfile} />
           </div>

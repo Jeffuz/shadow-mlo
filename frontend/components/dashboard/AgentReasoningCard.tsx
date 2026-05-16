@@ -1,6 +1,7 @@
 import type { ShadowJob } from "../types/shadow-mlo";
 
 export function AgentReasoningCard({ job }: { job: ShadowJob }) {
+    const reasoningLoading = isReasoningLoading(job);
     const reasoning = getAgentReasoning(job);
 
     return (
@@ -13,15 +14,24 @@ export function AgentReasoningCard({ job }: { job: ShadowJob }) {
                     </p>
                 </div>
 
-                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-medium text-emerald-300">
-                    Nemotron Decision
+                <span
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${reasoningLoading
+                        ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                        : "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                        }`}
+                >
+                    {reasoningLoading ? "Generating" : "Nemotron Decision"}
                 </span>
             </div>
 
             <div className="thin-scrollbar max-h-32 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950/50 p-3 pr-2">
-                <p className="text-sm leading-6 text-zinc-300">
-                    {reasoning}
-                </p>
+                {reasoningLoading ? (
+                    <ReasoningSkeleton />
+                ) : (
+                    <p className="text-sm leading-6 text-zinc-300">
+                        {reasoning}
+                    </p>
+                )}
             </div>
 
             <div className="mt-3 grid grid-cols-3 gap-2">
@@ -42,6 +52,26 @@ export function AgentReasoningCard({ job }: { job: ShadowJob }) {
     );
 }
 
+function ReasoningSkeleton() {
+    return (
+        <div aria-label="Generating agent reasoning" className="space-y-3">
+            <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-emerald-400/70" />
+            </div>
+
+            <div className="space-y-2">
+                <div className="h-3 w-11/12 animate-pulse rounded bg-zinc-800" />
+                <div className="h-3 w-full animate-pulse rounded bg-zinc-800" />
+                <div className="h-3 w-4/5 animate-pulse rounded bg-zinc-800" />
+            </div>
+
+            <p className="text-xs text-zinc-500">
+                Evaluating benchmark tradeoffs and writing deployment rationale...
+            </p>
+        </div>
+    );
+}
+
 function ReasonMetric({ label, value }: { label: string; value: string }) {
     return (
         <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-2">
@@ -52,6 +82,17 @@ function ReasonMetric({ label, value }: { label: string; value: string }) {
                 {value}
             </p>
         </div>
+    );
+}
+
+function isReasoningLoading(job: ShadowJob) {
+    if (job.recommendation) return false;
+
+    const reportStep = job.timeline.find((step) => step.id === "report");
+    return (
+        reportStep?.status === "running" ||
+        job.stage === "quality_check" ||
+        job.stage === "report_generated"
     );
 }
 
