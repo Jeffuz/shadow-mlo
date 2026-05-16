@@ -1,7 +1,6 @@
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { SystemStatusCards } from "@/components/dashboard/SystemStatusCards";
 import { LiveRunHeader } from "@/components/dashboard/LiveRunHeader";
 import { ArtifactClassificationCard } from "@/components/dashboard/ArtifactClassificationCard";
 import { DeviceProfileCard } from "@/components/dashboard/DeviceProfileCard";
@@ -28,7 +27,6 @@ export default function HomePage() {
       ) : (
         <div className="space-y-3">
           <LiveRunHeader job={job} />
-          {/* <SystemStatusCards job={job} /> */}
           <RecommendationCard job={job} />
           <ExecutionTimeline steps={job.timeline} />
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]">

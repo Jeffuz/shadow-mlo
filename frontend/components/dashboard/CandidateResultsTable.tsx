@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { CandidateResult, ShadowJob } from "../types/shadow-mlo";
 import { StatusBadge } from "../ui/StatusBadge";
 
@@ -93,6 +97,12 @@ export function CandidateResultsTable({
 }
 
 function DecisionBadge({ decision }: { decision: string }) {
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [tooltipPosition, setTooltipPosition] = useState<{
+        left: number;
+        top: number;
+    } | null>(null);
     const lowerDecision = decision.toLowerCase();
     const description = getDecisionDescription(decision);
 
@@ -104,20 +114,70 @@ function DecisionBadge({ decision }: { decision: string }) {
                 ? "border-sky-400/30 bg-sky-400/10 text-sky-300"
                 : "border-zinc-700 bg-zinc-950/60 text-zinc-400";
 
+    useEffect(() => {
+        return () => {
+            if (showTimerRef.current) {
+                clearTimeout(showTimerRef.current);
+            }
+        };
+    }, []);
+
+    function showTooltip() {
+        if (showTimerRef.current) {
+            clearTimeout(showTimerRef.current);
+        }
+
+        showTimerRef.current = setTimeout(() => {
+            const rect = buttonRef.current?.getBoundingClientRect();
+            if (!rect) return;
+
+            setTooltipPosition({
+                left: Math.min(rect.left, window.innerWidth - 272),
+                top: rect.bottom + 8,
+            });
+        }, 300);
+    }
+
+    function hideTooltip() {
+        if (showTimerRef.current) {
+            clearTimeout(showTimerRef.current);
+        }
+
+        setTooltipPosition(null);
+    }
+
     return (
-        <span className="group relative inline-flex max-w-full">
+        <span className="inline-flex max-w-full">
             <button
+                ref={buttonRef}
                 type="button"
                 aria-label={`${decision}: ${description}`}
+                onMouseEnter={showTooltip}
+                onMouseLeave={hideTooltip}
+                onFocus={showTooltip}
+                onBlur={hideTooltip}
                 className={`inline-flex max-w-48 truncate whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] outline-none transition focus:ring-2 focus:ring-emerald-400/40 ${tone}`}
             >
                 {decision}
             </button>
 
-            <span className="pointer-events-none absolute left-0 top-full z-50 mt-2 w-64 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-left text-[11px] leading-5 text-zinc-300 opacity-0 shadow-2xl shadow-black/40 transition-opacity delay-200 duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
-                <span className="block font-semibold text-zinc-100">{decision}</span>
-                <span className="mt-1 block">{description}</span>
-            </span>
+            {tooltipPosition && typeof document !== "undefined"
+                ? createPortal(
+                    <span
+                        className="pointer-events-none fixed z-50 w-64 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-left text-[11px] leading-5 text-zinc-300 opacity-100 shadow-2xl shadow-black/40"
+                        style={{
+                            left: tooltipPosition.left,
+                            top: tooltipPosition.top,
+                        }}
+                    >
+                        <span className="block font-semibold text-zinc-100">
+                            {decision}
+                        </span>
+                        <span className="mt-1 block">{description}</span>
+                    </span>,
+                    document.body
+                )
+                : null}
         </span>
     );
 }
