@@ -16,19 +16,28 @@ export function AgentPlanCard({ plan }: AgentPlanCardProps) {
                         Condensed planner output.
                     </p>
                 </div>
+
+                {visiblePlan.length > 3 ? (
+                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-400">
+                        {visiblePlan.length} steps
+                    </span>
+                ) : null}
             </div>
 
             {visiblePlan.length > 0 ? (
-                <ol className="space-y-1.5">
+                <ol className="thin-scrollbar max-h-36 space-y-1.5 overflow-y-auto pr-1">
                     {visiblePlan.map((item, index) => (
                         <li
                             key={`${item}-${index}`}
-                            className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2"
+                            className="flex items-start gap-2 rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2"
                         >
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-[11px] font-semibold text-emerald-300">
+                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-[11px] font-semibold text-emerald-300">
                                 {index + 1}
                             </span>
-                            <p className="truncate text-xs text-zinc-300">{item}</p>
+
+                            <p className="text-xs leading-5 text-zinc-300">
+                                {item}
+                            </p>
                         </li>
                     ))}
                 </ol>
