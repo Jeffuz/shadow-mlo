@@ -19,11 +19,11 @@ export function CandidateResultsTable({
                 </p>
             </div>
 
-            <div className="overflow-visible rounded-xl border border-zinc-800">
-                <table className="w-full min-w-[820px] border-collapse text-left text-xs">
+            <div className="overflow-x-auto rounded-xl border border-zinc-800 thin-scrollbar">
+                <table className="w-full min-w-[920px] border-collapse text-left text-xs">
                     <thead className="bg-zinc-950 text-[10px] uppercase tracking-wide text-zinc-500">
                         <tr>
-                            <Th>Candidate</Th>
+                            <Th className="w-[160px]">Candidate</Th>
                             <Th>Runtime</Th>
                             <Th>Status</Th>
                             <Th>Decision</Th>
@@ -31,45 +31,60 @@ export function CandidateResultsTable({
                             <Th>Throughput</Th>
                             <Th>Memory</Th>
                             <Th>Quality</Th>
-                            <Th>Artifact</Th>
+                            <Th className="w-[260px]">Artifact</Th>
                         </tr>
                     </thead>
 
                     <tbody className="divide-y divide-zinc-800 bg-zinc-950/40">
-                        {candidates.map((candidate) => (
-                            <tr key={candidate.name} className="hover:bg-zinc-900/80">
-                                <Td>
-                                    <div>
-                                        <p className="font-medium text-zinc-200">
-                                            {candidate.name}
-                                        </p>
-                                        {candidate.reason ? (
-                                            <p className="mt-0.5 max-w-32 truncate text-[11px] text-zinc-500">
-                                                {candidate.reason}
+                        {candidates.map((candidate) => {
+                            const primaryName = formatCandidatePrimary(candidate.name);
+                            const secondaryName = formatCandidateSecondary(candidate.name);
+
+                            return (
+                                <tr key={candidate.name} className="hover:bg-zinc-900/80">
+                                    <Td>
+                                        <div className="min-w-[130px]">
+                                            <p className="font-medium leading-5 text-zinc-200">
+                                                {primaryName}
                                             </p>
-                                        ) : null}
-                                    </div>
-                                </Td>
-                                <Td>{candidate.runtime}</Td>
-                                <Td>
-                                    <StatusBadge status={candidate.status} />
-                                </Td>
-                                <Td>
-                                    <DecisionBadge
-                                        decision={getCandidateDecision(candidate, recommendation)}
-                                    />
-                                </Td>
-                                <Td>{candidate.latency ?? "—"}</Td>
-                                <Td>{candidate.throughput ?? "—"}</Td>
-                                <Td>{candidate.memory ?? "—"}</Td>
-                                <Td>{candidate.quality ?? "—"}</Td>
-                                <Td>
-                                    <span className="font-mono text-[11px] text-emerald-300">
-                                        {candidate.artifact ?? "—"}
-                                    </span>
-                                </Td>
-                            </tr>
-                        ))}
+
+                                            {secondaryName ? (
+                                                <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">
+                                                    {secondaryName}
+                                                </p>
+                                            ) : candidate.reason ? (
+                                                <p className="mt-0.5 max-w-36 truncate text-[11px] leading-4 text-zinc-500">
+                                                    {candidate.reason}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    </Td>
+
+                                    <Td>{candidate.runtime}</Td>
+
+                                    <Td>
+                                        <StatusBadge status={candidate.status} />
+                                    </Td>
+
+                                    <Td>
+                                        <DecisionBadge
+                                            decision={getCandidateDecision(candidate, recommendation)}
+                                        />
+                                    </Td>
+
+                                    <Td>{candidate.latency ?? "—"}</Td>
+                                    <Td>{candidate.throughput ?? "—"}</Td>
+                                    <Td>{candidate.memory ?? "—"}</Td>
+                                    <Td>{candidate.quality ?? "—"}</Td>
+
+                                    <Td>
+                                        <code className="block max-w-[260px] break-all font-mono text-[11px] leading-5 text-emerald-300">
+                                            {candidate.artifact ?? "—"}
+                                        </code>
+                                    </Td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -80,6 +95,7 @@ export function CandidateResultsTable({
 function DecisionBadge({ decision }: { decision: string }) {
     const lowerDecision = decision.toLowerCase();
     const description = getDecisionDescription(decision);
+
     const tone = lowerDecision.includes("recommended")
         ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
         : lowerDecision.includes("rejected") || lowerDecision.includes("failed")
@@ -104,6 +120,24 @@ function DecisionBadge({ decision }: { decision: string }) {
             </span>
         </span>
     );
+}
+
+function formatCandidatePrimary(name: string) {
+    const lowerName = name.toLowerCase();
+
+    if (lowerName.startsWith("fp32")) return "FP32 Baseline";
+    if (lowerName.startsWith("fp16")) return "FP16";
+    if (lowerName.startsWith("fp8")) return "FP8";
+    if (lowerName.startsWith("int8")) return "INT8";
+    if (lowerName.startsWith("bf16")) return "BF16 Baseline";
+    if (lowerName.includes("baseline")) return name.replace(/\s*\(.*?\)\s*/g, "");
+
+    return name.replace(/\s*\(.*?\)\s*/g, "").trim();
+}
+
+function formatCandidateSecondary(name: string) {
+    const match = name.match(/\((.*?)\)/);
+    return match?.[1]?.trim() ?? "";
 }
 
 function getDecisionDescription(decision: string) {
@@ -162,7 +196,7 @@ function getCandidateDecision(
     }
 
     const qualityValue = parsePercent(candidate.quality);
-    if (recommendation && qualityValue !== null && qualityValue < 99) {
+    if (recommendation && qualityValue !== null && qualityValue < 98) {
         return "Rejected: quality below threshold";
     }
 
@@ -187,10 +221,16 @@ function parsePercent(value?: string) {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-    return <th className="px-3 py-2 font-medium">{children}</th>;
+function Th({
+    children,
+    className = "",
+}: {
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return <th className={`px-3 py-2 font-medium ${className}`}>{children}</th>;
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-    return <td className="px-3 py-2.5 text-zinc-400">{children}</td>;
+    return <td className="px-3 py-2.5 align-middle text-zinc-400">{children}</td>;
 }

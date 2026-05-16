@@ -3,9 +3,7 @@ interface AgentPlanCardProps {
 }
 
 export function AgentPlanCard({ plan }: AgentPlanCardProps) {
-    const visiblePlan = plan.filter(
-        (item) => !item.toLowerCase().startsWith("reasoning:")
-    );
+    const visiblePlan = cleanPlan(plan);
 
     return (
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
@@ -46,4 +44,21 @@ export function AgentPlanCard({ plan }: AgentPlanCardProps) {
             )}
         </section>
     );
+}
+
+function cleanPlan(plan: string[]) {
+    const seen = new Set<string>();
+
+    return plan
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .filter((item) => !item.toLowerCase().startsWith("reasoning:"))
+        .filter((item) => !item.toLowerCase().startsWith("as an ml optimization expert"))
+        .filter((item) => !item.includes(", , ]"))
+        .filter((item) => {
+            const normalized = item.toLowerCase().replace(/\s+/g, " ");
+            if (seen.has(normalized)) return false;
+            seen.add(normalized);
+            return true;
+        });
 }
