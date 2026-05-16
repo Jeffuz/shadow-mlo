@@ -4,7 +4,6 @@ import { SystemStatusCards } from "@/components/dashboard/SystemStatusCards";
 import { LiveRunHeader } from "@/components/dashboard/LiveRunHeader";
 import { ArtifactClassificationCard } from "@/components/dashboard/ArtifactClassificationCard";
 import { DeviceProfileCard } from "@/components/dashboard/DeviceProfileCard";
-import { RuntimeRouteCard } from "@/components/dashboard/RuntimeRouteCard";
 import { AgentPlanCard } from "@/components/dashboard/AgentPlanCard";
 import { ExecutionTimeline } from "@/components/dashboard/ExecutionTimeline";
 import { CandidateResultsTable } from "@/components/dashboard/CandidateResultsTable";
@@ -16,30 +15,25 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-3">
         <LiveRunHeader job={job} />
 
         <SystemStatusCards job={job} />
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-          <div className="space-y-6 xl:col-span-2">
-            <ExecutionTimeline steps={job.timeline} />
-            <CandidateResultsTable candidates={job.candidates} />
-          </div>
+        <RecommendationCard job={job} />
 
-          <div className="space-y-6">
-            <RecommendationCard recommendation={job.recommendation} />
-            <ArtifactClassificationCard classification={job.classification} />
-            <DeviceProfileCard deviceProfile={job.deviceProfile} />
-          </div>
+        <ExecutionTimeline steps={job.timeline} />
+
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]">
+          <CandidateResultsTable candidates={job.candidates} />
+          <ActivityLog events={(job.events ?? []).slice(-3).reverse()} />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.8fr_1.1fr]">
           <AgentPlanCard plan={job.plan} />
-          <RuntimeRouteCard job={job} />
+          <ArtifactClassificationCard classification={job.classification} />
+          <DeviceProfileCard deviceProfile={job.deviceProfile} />
         </div>
-
-        <ActivityLog events={job.events ?? []} />
       </div>
     </AppShell>
   );

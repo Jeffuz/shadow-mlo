@@ -3,30 +3,41 @@ interface AgentPlanCardProps {
 }
 
 export function AgentPlanCard({ plan }: AgentPlanCardProps) {
-    return (
-        <section className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
-            <h3 className="text-sm font-semibold text-white">Agent Plan</h3>
-            <p className="mt-1 text-xs text-zinc-500">
-                Planner output based on artifact classification, target device, and
-                memory history.
-            </p>
+    const visiblePlan = plan.slice(0, 3);
 
-            {plan.length > 0 ? (
-                <ol className="mt-5 space-y-3">
-                    {plan.map((item, index) => (
+    return (
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+            <div className="mb-2 flex items-start justify-between gap-4">
+                <div>
+                    <h3 className="text-sm font-semibold text-white">Agent Plan</h3>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                        Condensed planner output.
+                    </p>
+                </div>
+
+                {plan.length > 3 ? (
+                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-400">
+                        +{plan.length - 3} more
+                    </span>
+                ) : null}
+            </div>
+
+            {visiblePlan.length > 0 ? (
+                <ol className="space-y-1.5">
+                    {visiblePlan.map((item, index) => (
                         <li
                             key={`${item}-${index}`}
-                            className="flex gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-3"
+                            className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2"
                         >
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-xs font-semibold text-emerald-300">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-[11px] font-semibold text-emerald-300">
                                 {index + 1}
                             </span>
-                            <p className="text-sm leading-6 text-zinc-300">{item}</p>
+                            <p className="truncate text-xs text-zinc-300">{item}</p>
                         </li>
                     ))}
                 </ol>
             ) : (
-                <p className="mt-5 text-sm text-zinc-500">Plan pending.</p>
+                <p className="text-sm text-zinc-500">Plan pending.</p>
             )}
         </section>
     );

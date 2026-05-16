@@ -7,11 +7,11 @@ interface ActivityLogProps {
 
 export function ActivityLog({ events }: ActivityLogProps) {
     return (
-        <section className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5">
-            <div className="mb-5">
-                <h3 className="text-sm font-semibold text-white">Activity Log</h3>
-                <p className="mt-1 text-xs text-zinc-500">
-                    Tool calls, planner events, and pipeline updates.
+        <section className="h-full rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+            <div className="mb-2">
+                <h3 className="text-sm font-semibold text-white">Latest Activity</h3>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                    Recent tool calls and planner events.
                 </p>
             </div>
 
@@ -20,26 +20,28 @@ export function ActivityLog({ events }: ActivityLogProps) {
                     events.map((event, index) => (
                         <div
                             key={`${event.timestamp}-${index}`}
-                            className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-3"
+                            className="flex items-start gap-2 rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2"
                         >
-                            <StatusDot status={event.status} />
+                            <div className="mt-1">
+                                <StatusDot status={event.status} />
+                            </div>
 
                             <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="font-mono text-xs text-zinc-500">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono text-[10px] text-zinc-500">
                                         {event.timestamp}
                                     </span>
-                                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-400">
-                                        {event.type}
-                                    </span>
+
                                     {event.tool ? (
-                                        <span className="font-mono text-xs text-emerald-300">
+                                        <span className="truncate font-mono text-[10px] text-emerald-300">
                                             {event.tool}
                                         </span>
                                     ) : null}
                                 </div>
 
-                                <p className="mt-1 text-sm text-zinc-300">{event.message}</p>
+                                <p className="mt-0.5 line-clamp-1 text-xs text-zinc-300">
+                                    {event.message}
+                                </p>
                             </div>
                         </div>
                     ))

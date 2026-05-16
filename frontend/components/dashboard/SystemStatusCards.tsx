@@ -14,48 +14,55 @@ export function SystemStatusCards({ job }: SystemStatusCardsProps) {
     ).length;
 
     return (
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard
-                label="Current Stage"
+        <section className="grid grid-cols-1 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/70 md:grid-cols-4">
+            <CompactMetric
+                label="Stage"
                 value={formatStage(job.stage ?? job.status)}
-                helper="Latest agent workflow state"
             />
 
-            <MetricCard
-                label="Runtime Path"
-                value={job.runtimePath}
-                helper="Selected optimization backend"
-            />
+            <CompactMetric label="Runtime" value={job.runtimePath} />
 
-            <MetricCard
+            <CompactMetric
                 label="Candidates"
                 value={`${successfulCandidates}/${job.candidates.length}`}
-                helper={`${runningCandidates} currently running`}
+                helper={`${runningCandidates} running`}
             />
 
-            <MetricCard
+            <CompactMetric
                 label="Recommendation"
-                value={job.recommendation?.candidate ?? "Pending"}
-                helper={job.recommendation?.speedup ?? "Waiting for benchmark"}
+                value={
+                    job.status === "completed" && job.recommendation
+                        ? job.recommendation.candidate
+                        : "Pending"
+                }
+                helper={
+                    job.status === "completed" && job.recommendation
+                        ? job.recommendation.speedup
+                        : "after benchmark"
+                }
             />
         </section>
     );
 }
 
-function MetricCard({
+function CompactMetric({
     label,
     value,
     helper,
 }: {
     label: string;
     value: string;
-    helper: string;
+    helper?: string;
 }) {
     return (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-            <p className="text-xs font-medium text-zinc-500">{label}</p>
-            <p className="mt-3 truncate text-2xl font-semibold text-white">{value}</p>
-            <p className="mt-2 text-xs text-zinc-500">{helper}</p>
+        <div className="border-b border-zinc-800 px-4 py-2.5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0">
+            <p className="text-[9px] uppercase tracking-wide text-zinc-500">
+                {label}
+            </p>
+            <div className="mt-0.5 flex items-baseline gap-2">
+                <p className="truncate text-sm font-semibold text-white">{value}</p>
+                {helper ? <p className="text-[11px] text-zinc-500">{helper}</p> : null}
+            </div>
         </div>
     );
 }

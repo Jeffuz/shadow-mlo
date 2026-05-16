@@ -7,41 +7,46 @@ interface LiveRunHeaderProps {
 
 export function LiveRunHeader({ job }: LiveRunHeaderProps) {
     return (
-        <section className="rounded-3xl border border-zinc-800 bg-linear-to-br from-zinc-900 to-zinc-950 p-4 shadow-2xl shadow-black/20">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <StatusBadge status={job.status} />
-                        <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-400">
-                            {job.runtimePath}
-                        </span>
-                        <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-400">
-                            {job.targetDevice}
-                        </span>
-                    </div>
-
-                    <h1 className="mt-5 font-mono text-3xl font-semibold tracking-tight text-white">
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-4 py-2">
+            <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                    <h1 className="truncate font-mono text-lg font-semibold tracking-tight text-white">
                         {job.artifactName}
                     </h1>
 
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                        Shadow-MLO classified this artifact as{" "}
-                        <span className="text-zinc-200">{job.artifactType}</span>, routed it
-                        through{" "}
-                        <span className="text-zinc-200">{job.runtimePath}</span>, and is
-                        evaluating deployment candidates for{" "}
-                        <span className="text-zinc-200">{job.targetDevice}</span>.
+                    <StatusBadge status={job.status} />
+
+                    <Pill>{job.runtimePath}</Pill>
+                    <Pill>{job.targetDevice}</Pill>
+                    <Pill>{job.modelFamily}</Pill>
+
+                    <span className="hidden text-xs text-zinc-600 xl:inline">|</span>
+
+                    <p className="truncate text-xs text-zinc-400">
+                        {job.artifactType} routed to{" "}
+                        <span className="text-zinc-200">{job.runtimePath}</span>
                     </p>
                 </div>
 
-                <div className="grid min-w-64 grid-cols-2 gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                    <Meta label="Job ID" value={job.id} mono />
+                <div className="flex shrink-0 flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+                    <Meta label="Job" value={job.id} mono />
+                    <Divider />
                     <Meta label="Owner" value={job.owner ?? "local"} />
+                    <Divider />
                     <Meta label="Started" value={job.startedAt} />
+                    <Divider />
                     <Meta label="Updated" value={job.updatedAt ?? "—"} />
                 </div>
             </div>
         </section>
+    );
+}
+
+function Pill({ children }: { children: React.ReactNode }) {
+    return (
+        <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-400">
+            {children}
+        </span>
     );
 }
 
@@ -55,16 +60,17 @@ function Meta({
     mono?: boolean;
 }) {
     return (
-        <div>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">
-                {label}
-            </p>
-            <p
-                className={`mt-1 truncate text-xs text-zinc-200 ${mono ? "font-mono" : ""
-                    }`}
-            >
+        <span className="whitespace-nowrap">
+            <span className="mr-1 uppercase tracking-wide text-zinc-600">
+                {label}:
+            </span>
+            <span className={mono ? "font-mono text-zinc-300" : "text-zinc-300"}>
                 {value}
-            </p>
-        </div>
+            </span>
+        </span>
     );
+}
+
+function Divider() {
+    return <span className="text-zinc-700">•</span>;
 }

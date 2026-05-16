@@ -72,15 +72,7 @@ export const mockJob: ShadowJob = {
             reason: "Only run if support is detected",
         },
     ],
-    recommendation: {
-        candidate: "INT8 Weight-Only",
-        artifact: "llama_edge_1b_int8/",
-        reason:
-            "INT8 gives the best throughput and memory profile while staying within the configured quality threshold.",
-        speedup: "1.6x",
-        quality: "98.7%",
-        memoryReduction: "37%",
-    },
+    recommendation: null,
     events: [
         {
             timestamp: "10:21:03",

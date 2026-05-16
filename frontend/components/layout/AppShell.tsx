@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { TopBar } from "@/components/layout/TopBar";
+// import { TopBar } from "@/components/layout/TopBar";
 
 interface AppShellProps {
     children: ReactNode;
@@ -13,9 +13,9 @@ export function AppShell({ children }: AppShellProps) {
                 <Sidebar />
 
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <TopBar />
+                    {/* <TopBar /> */}
 
-                    <main className="flex-1 overflow-x-hidden px-6 py-6 lg:px-8">
+                    <main className="flex-1 overflow-x-hidden px-4 py-3 lg:px-5">
                         {children}
                     </main>
                 </div>

@@ -9,7 +9,7 @@ const navItems = [
 
 export function Sidebar() {
     return (
-        <aside className="hidden w-72 shrink-0 border-r border-zinc-800 bg-zinc-950/95 px-4 py-5 lg:block">
+        <aside className="hidden w-60 shrink-0 border-r border-zinc-800 bg-zinc-950/95 px-4 py-5 lg:block">
             <div className="mb-8">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-sm font-bold text-emerald-300">
