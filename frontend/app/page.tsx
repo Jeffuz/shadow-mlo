@@ -11,6 +11,7 @@ import { CandidateResultsTable } from "@/components/dashboard/CandidateResultsTa
 import { RecommendationCard } from "@/components/dashboard/RecommendationCard";
 import { ActivityLog } from "@/components/dashboard/ActivityLog";
 import { useLatestJob } from "@/components/lib/useLatestJob";
+import { AgentReasoningCard } from "@/components/dashboard/AgentReasoningCard";
 
 export default function HomePage() {
   const { job, loading } = useLatestJob();
@@ -33,7 +34,7 @@ export default function HomePage() {
           <ExecutionTimeline steps={job.timeline} />
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]">
             <CandidateResultsTable candidates={job.candidates} />
-            <ActivityLog events={(job.events ?? []).slice(-3).reverse()} />
+            <AgentReasoningCard job={job} />
           </div>
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.8fr_1.1fr]">
             <AgentPlanCard plan={job.plan} />

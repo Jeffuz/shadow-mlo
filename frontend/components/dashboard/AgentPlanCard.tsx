@@ -3,7 +3,9 @@ interface AgentPlanCardProps {
 }
 
 export function AgentPlanCard({ plan }: AgentPlanCardProps) {
-    const visiblePlan = plan.slice(0, 3);
+    const visiblePlan = plan.filter(
+        (item) => !item.toLowerCase().startsWith("reasoning:")
+    );
 
     return (
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
@@ -14,12 +16,6 @@ export function AgentPlanCard({ plan }: AgentPlanCardProps) {
                         Condensed planner output.
                     </p>
                 </div>
-
-                {plan.length > 3 ? (
-                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-400">
-                        +{plan.length - 3} more
-                    </span>
-                ) : null}
             </div>
 
             {visiblePlan.length > 0 ? (

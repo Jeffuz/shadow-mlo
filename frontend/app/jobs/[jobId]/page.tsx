@@ -11,6 +11,7 @@ import { AgentPlanCard } from "@/components/dashboard/AgentPlanCard";
 import { ArtifactClassificationCard } from "@/components/dashboard/ArtifactClassificationCard";
 import { DeviceProfileCard } from "@/components/dashboard/DeviceProfileCard";
 import { RuntimeRouteCard } from "@/components/dashboard/RuntimeRouteCard";
+import { AgentReasoningCard } from "@/components/dashboard/AgentReasoningCard";
 
 interface JobDetailPageProps {
     params: Promise<{
@@ -94,7 +95,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </div>
 
                 <RuntimeRouteCard job={job} />
-
+                <AgentReasoningCard job={job} />
                 <ActivityLog events={job.events ?? []} />
 
                 <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
