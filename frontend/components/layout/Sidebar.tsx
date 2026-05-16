@@ -25,9 +25,9 @@ export function Sidebar() {
     return (
         <aside className="hidden w-56 shrink-0 border-r border-zinc-800 bg-zinc-950/95 px-4 py-5 lg:block">
             <div className="mb-8">
-                <Link href="/" className="block">
+                <Link href="/" className="block px-1">
                     <Image
-                        src="/logo.png"
+                        src="/logos.png"
                         alt="Shadow-MLO logo"
                         width={180}
                         height={80}
