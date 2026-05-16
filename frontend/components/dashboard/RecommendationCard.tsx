@@ -72,7 +72,7 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
 
                         <span className="text-xs text-zinc-500">—</span>
 
-                        <p className="truncate text-xs text-zinc-400">
+                        <p className="text-xs text-zinc-400">
                             {recommendation.reason}
                         </p>
                     </div>
