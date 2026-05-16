@@ -33,3 +33,21 @@ export async function getJob(jobId: string): Promise<ShadowJob | null> {
         return null;
     }
 }
+
+export async function uploadArtifact(file: File): Promise<{ artifact: string; filename: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${API_BASE}/api/upload`, {
+        method: "POST",
+        body: formData,
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+        throw new Error(data.error ?? "Upload failed");
+    }
+
+    return data;
+}
