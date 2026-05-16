@@ -40,9 +40,10 @@ export default function JobDetailPage() {
             <div className="space-y-3">
                 <Link
                     href="/jobs"
-                    className="text-xs text-zinc-500 transition hover:text-emerald-300"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-emerald-400/40 hover:bg-emerald-400/10 hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
                 >
-                    ← Back to jobs
+                    <BackIcon />
+                    Back to jobs
                 </Link>
                 <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-4 py-3 mt-3">
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -163,6 +164,23 @@ export default function JobDetailPage() {
             </div>
             )}
         </AppShell>
+    );
+}
+
+function BackIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            className="h-3.5 w-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M15 18l-6-6 6-6" />
+        </svg>
     );
 }
 

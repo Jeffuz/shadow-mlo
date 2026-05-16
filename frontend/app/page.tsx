@@ -28,7 +28,7 @@ export default function HomePage() {
       ) : (
         <div className="space-y-3">
           <LiveRunHeader job={job} />
-          <SystemStatusCards job={job} />
+          {/* <SystemStatusCards job={job} /> */}
           <RecommendationCard job={job} />
           <ExecutionTimeline steps={job.timeline} />
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]">
