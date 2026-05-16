@@ -133,11 +133,9 @@ def detect() -> HardwareProfile:
     vram_mb = gpu["vram_mb"]
     precisions = _precisions_for_sm(compute_cap)
     has_trt = _has_tensorrt()
-    has_trt_llm = _has_tensorrt_llm()
+    has_cuda = _has_cuda_ort()
     device_name = _device_name(name, compute_cap)
     budget = _memory_budget(name, vram_mb)
-
-    has_cuda = _has_cuda_ort()
 
     if has_trt:
         tier = "tensorrt"
