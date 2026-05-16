@@ -26,6 +26,7 @@ class TensorRTOptimizer(OptimizerBackend):
         self._workspace_mb = workspace_mb
 
     def compile(self, onnx_path: Path, config: OptimizationConfig) -> CompileResult:
+        onnx_path = Path(onnx_path).resolve()
         engine_path = onnx_path.parent / f"{onnx_path.stem}_{config.label()}.engine"
         cmd = self._build_cmd(onnx_path, engine_path, config)
         start = time.perf_counter()
@@ -48,6 +49,7 @@ class TensorRTOptimizer(OptimizerBackend):
             )
 
     def benchmark(self, engine_path: Path, config: OptimizationConfig) -> BenchmarkResult:
+        engine_path = Path(engine_path).resolve()
         cmd = [
             TRTEXEC,
             f"--loadEngine={engine_path}",
@@ -55,24 +57,24 @@ class TensorRTOptimizer(OptimizerBackend):
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         output = result.stdout + result.stderr
-        mean_ms = _parse_metric(output, "mean")
-        p99_ms  = _parse_metric(output, "99th percentile")
-        mem_mb  = _parse_metric(output, "GPU Memory")
+        mean_ms = _parse_metric(output, "mean =")
+        p99_ms  = _parse_metric(output, "percentile(99%) =")
+        mem_mib = _parse_metric(output, "device memory size:")
+        tput    = _parse_metric(output, "Throughput:")
         return BenchmarkResult(
             config=config,
-            latency_mean_ms=round(mean_ms, 2),
-            latency_p99_ms=round(p99_ms, 2),
-            throughput_fps=round(1000.0 / mean_ms if mean_ms else 0, 1),
-            memory_mb=round(mem_mb, 1),
+            latency_mean_ms=round(mean_ms, 4),
+            latency_p99_ms=round(p99_ms, 4),
+            throughput_fps=round(tput, 1),
+            memory_mb=round(mem_mib, 3),
         )
 
     def validate(self, onnx_path: Path, engine_path: Path, config: OptimizationConfig) -> ValidationResult:
         opts = ort.SessionOptions()
         opts.log_severity_level = 3
-        sess = ort.InferenceSession(
-            str(onnx_path), sess_options=opts,
-            providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-        )
+        available = ort.get_available_providers()
+        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"] if "CUDAExecutionProvider" in available else ["CPUExecutionProvider"]
+        sess = ort.InferenceSession(str(onnx_path), sess_options=opts, providers=providers)
         inputs = {}
         for inp in sess.get_inputs():
             shape = [d if isinstance(d, int) and d > 0 else 1 for d in inp.shape]
@@ -93,7 +95,7 @@ class TensorRTOptimizer(OptimizerBackend):
             f"--onnx={onnx_path}",
             f"--saveEngine={engine_path}",
             f"--memPoolSize=workspace:{self._workspace_mb}",
-            "--buildOnly",
+            "--skipInference",
         ]
         if config.precision == Precision.FP16:
             cmd.append("--fp16")

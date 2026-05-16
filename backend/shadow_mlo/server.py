@@ -87,6 +87,16 @@ async def list_jobs():
     return JSONResponse(_registry.get_all_jobs())
 
 
+@app.get("/api/jobs/latest")
+async def latest_job():
+    if _registry is None:
+        return JSONResponse({"error": "Registry not initialized"}, status_code=503)
+    jobs = _registry.get_all_jobs(limit=1)
+    if not jobs:
+        return JSONResponse({"error": "No jobs found"}, status_code=404)
+    return JSONResponse(jobs[0])
+
+
 @app.get("/api/jobs/{job_id}")
 async def get_job(job_id: str):
     if _registry is None:

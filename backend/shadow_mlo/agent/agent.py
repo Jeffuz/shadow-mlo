@@ -264,6 +264,8 @@ class ShadowAgent:
         except Exception as e:
             logger.error(f"Pipeline failed for {model_path.name}: {e}", exc_info=True)
             job.status = "failed"
+            job.stage = "failed"
+            job.add_event("pipeline", str(e), "failed")
             self._set_timeline(job, "detected", "failed")
             self._save_and_broadcast(job)
             events.broadcast("pipeline_error", {"job_id": job.id, "error": str(e)})
@@ -271,6 +273,8 @@ class ShadowAgent:
 
     def _run_pipeline(self, job: Job, model_path: Path) -> Job:
         # ── Detected ──────────────────────────────────────────────────────────
+        job.stage = "artifact_detected"
+        job.add_event("watcher", f"Detected {model_path.name} in models/", "success")
         self._set_timeline(job, "detected", "success", _now())
         self._save_and_broadcast(job)
 
@@ -279,6 +283,9 @@ class ShadowAgent:
         self._save_and_broadcast(job)
 
         metadata = inspect(model_path)
+        logger.info(f"Classified : {metadata.summary()}")
+        job.stage = "classified"
+        job.add_event("classify_artifact", f"Classified as {metadata.model_family} / {metadata.likely_type}", "success")
         job.artifactType  = metadata.artifact_type
         job.modelFamily   = metadata.model_family
         job.classification = Classification(
@@ -304,6 +311,9 @@ class ShadowAgent:
             supportedPrecisions=self._hw.supported_precisions,
             memoryBudget=self._hw.memory_budget,
         )
+        logger.info(f"Device     : {self._hw.display_name} | precisions: {self._hw.supported_precisions}")
+        job.stage = "device_profile_loaded"
+        job.add_event("device_profile", f"Loaded profile for {self._hw.display_name}", "success")
         self._set_timeline(job, "profile", "success", _now())
         self._save_and_broadcast(job)
 
@@ -312,19 +322,30 @@ class ShadowAgent:
         self._save_and_broadcast(job)
 
         past_wins = self._registry.get_similar_model_wins(metadata.likely_type)
+        logger.info(f"Planning   : {len(past_wins)} prior win(s) for {metadata.likely_type} models")
         configs, plan = _initial_configs(
             metadata, past_wins, self._hw.display_name, self._hw.supported_precisions
         )
+        logger.info(f"Plan       : {[c.label() for c in configs]}")
+        for line in plan:
+            logger.info(f"  > {line}")
         job.plan = plan
+        job.stage = "plan_generated"
+        job.add_event("nemotron_planner", f"Generated plan: {[c.label() for c in configs]}", "success", "agent_plan")
         self._set_timeline(job, "planned", "success", _now())
         self._save_and_broadcast(job)
 
         # ── FP32 baseline ─────────────────────────────────────────────────────
+        job.stage = "building_candidates"
+        job.add_event("run_candidate_builds", "Starting candidate builds", "running")
         self._set_timeline(job, "building", "running")
+        logger.info("Building   : fp32 baseline")
         fp32_config = OptimizationConfig(Precision.FP32)
         fp32_result = self._run_candidate(job, model_path, metadata, fp32_config)
         fp32_latency = fp32_result.benchmark.latency_mean_ms if fp32_result.benchmark else None
         fp32_memory  = fp32_result.benchmark.memory_mb if fp32_result.benchmark else None
+        if fp32_result.benchmark:
+            logger.info(f"  fp32     : {fp32_latency} ms | {fp32_memory} MB")
 
         all_results: list[CandidateResult] = [fp32_result]
         tried: set[str] = {"fp32"}
@@ -334,9 +355,12 @@ class ShadowAgent:
             if config.label() in tried:
                 continue
             tried.add(config.label())
+            logger.info(f"Building   : {config.label()}")
             result = self._run_candidate(job, model_path, metadata, config)
+            if result.benchmark:
+                logger.info(f"  {config.label():<10}: {result.benchmark.latency_mean_ms} ms | {result.benchmark.memory_mb} MB | delta={result.validation.accuracy_delta if result.validation else '—'}")
             all_results.append(result)
-            self._registry.save_run(metadata.sha256, config, result)
+            self._registry.save_run(metadata.sha256, metadata.likely_type, config, result)
 
         # ── Nemotron: iterate ─────────────────────────────────────────────────
         for _ in range(MAX_ITERATIONS - len(tried)):
@@ -344,9 +368,12 @@ class ShadowAgent:
             if next_cfg is None or next_cfg.label() in tried:
                 break
             tried.add(next_cfg.label())
+            logger.info(f"Building   : {next_cfg.label()} (Nemotron suggestion)")
             result = self._run_candidate(job, model_path, metadata, next_cfg)
+            if result.benchmark:
+                logger.info(f"  {next_cfg.label():<10}: {result.benchmark.latency_mean_ms} ms | {result.benchmark.memory_mb} MB | delta={result.validation.accuracy_delta if result.validation else '—'}")
             all_results.append(result)
-            self._registry.save_run(metadata.sha256, next_cfg, result)
+            self._registry.save_run(metadata.sha256, metadata.likely_type, next_cfg, result)
 
         self._set_timeline(job, "building", "success", _now())
         self._set_timeline(job, "benchmark", "success", _now())
@@ -357,6 +384,9 @@ class ShadowAgent:
         self._save_and_broadcast(job)
 
         winner = _pick_winner(all_results)
+        job.stage = "quality_check"
+        job.add_event("report", f"Winner: {winner.compile.config.label()}", "running")
+        logger.info(f"Winner     : {winner.compile.config.label()}")
         narrative = _write_narrative(metadata, all_results, winner)
 
         speedup = (
@@ -379,7 +409,12 @@ class ShadowAgent:
             memoryReduction=f"{mem_reduction}%" if mem_reduction is not None else "—",
         )
 
-        self._registry.save_recommendation(metadata.sha256, winner.compile.config, narrative)
+        self._registry.save_recommendation(metadata.sha256, metadata.likely_type, winner.compile.config, narrative)
+        logger.info(f"Speedup    : {job.recommendation.speedup} | memory reduction: {job.recommendation.memoryReduction} | quality: {job.recommendation.quality}")
+        logger.info(f"Narrative  : {narrative}")
+        logger.info(f"Done       : job {job.id} completed")
+        job.stage = "completed"
+        job.add_event("report", "Optimization report complete", "success")
         job.status = "completed"
         self._set_timeline(job, "report", "success", _now())
         self._save_and_broadcast(job)
@@ -464,6 +499,7 @@ class ShadowAgent:
                 break
 
     def _save_and_broadcast(self, job: Job):
+        job.updatedAt = _now()
         job_dict = job.to_dict()
         self._registry.save_job(job_dict)
         events.broadcast("job_updated", {"job_id": job.id, "job": job_dict})

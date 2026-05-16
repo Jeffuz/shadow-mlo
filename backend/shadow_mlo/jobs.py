@@ -131,6 +131,18 @@ class Job:
     timeline: list = field(default_factory=list)
     candidates: list = field(default_factory=list)
     recommendation: Optional[Recommendation] = None
+    stage: str = "idle"
+    updatedAt: Optional[str] = None
+    events: list = field(default_factory=list)
+
+    def add_event(self, tool: str, message: str, status: str, event_type: str = "tool_call") -> None:
+        self.events.append({
+            "timestamp": _now_ts(),
+            "type": event_type,
+            "tool": tool,
+            "message": message,
+            "status": status,
+        })
 
     def to_dict(self) -> dict:
         d = {
@@ -141,7 +153,9 @@ class Job:
             "runtimePath": self.runtimePath,
             "targetDevice": self.targetDevice,
             "status": self.status,
+            "stage": self.stage,
             "startedAt": self.startedAt,
+            "updatedAt": self.updatedAt,
             "owner": self.owner,
             "plan": list(self.plan),
             "timeline": [
@@ -152,13 +166,13 @@ class Job:
                 c.to_dict() if isinstance(c, Candidate) else c
                 for c in self.candidates
             ],
+            "recommendation": self.recommendation.to_dict() if self.recommendation else None,
+            "events": list(self.events),
         }
         if self.classification:
             d["classification"] = self.classification.to_dict()
         if self.deviceProfile:
             d["deviceProfile"] = self.deviceProfile.to_dict()
-        if self.recommendation:
-            d["recommendation"] = self.recommendation.to_dict()
         return d
 
 
