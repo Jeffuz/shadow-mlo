@@ -59,7 +59,7 @@ export function AgentPlanCard({ plan, stage }: AgentPlanCardProps) {
 function PlanSkeleton() {
     return (
         <div aria-label="Generating agent plan" className="space-y-1.5">
-            {[0, 1, 2, 3].map((item) => (
+            {[0, 1, 2].map((item) => (
                 <div
                     key={item}
                     className="flex items-start gap-2 rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2"
