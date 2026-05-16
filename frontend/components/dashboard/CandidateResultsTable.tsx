@@ -19,7 +19,7 @@ export function CandidateResultsTable({
                 </p>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-zinc-800">
+            <div className="overflow-visible rounded-xl border border-zinc-800">
                 <table className="w-full min-w-[820px] border-collapse text-left text-xs">
                     <thead className="bg-zinc-950 text-[10px] uppercase tracking-wide text-zinc-500">
                         <tr>
@@ -79,6 +79,7 @@ export function CandidateResultsTable({
 
 function DecisionBadge({ decision }: { decision: string }) {
     const lowerDecision = decision.toLowerCase();
+    const description = getDecisionDescription(decision);
     const tone = lowerDecision.includes("recommended")
         ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
         : lowerDecision.includes("rejected") || lowerDecision.includes("failed")
@@ -88,10 +89,55 @@ function DecisionBadge({ decision }: { decision: string }) {
                 : "border-zinc-700 bg-zinc-950/60 text-zinc-400";
 
     return (
-        <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] ${tone}`}>
-            {decision}
+        <span className="group relative inline-flex max-w-full">
+            <button
+                type="button"
+                aria-label={`${decision}: ${description}`}
+                className={`inline-flex max-w-48 truncate whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] outline-none transition focus:ring-2 focus:ring-emerald-400/40 ${tone}`}
+            >
+                {decision}
+            </button>
+
+            <span className="pointer-events-none absolute left-0 top-full z-50 mt-2 w-64 rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-left text-[11px] leading-5 text-zinc-300 opacity-0 shadow-2xl shadow-black/40 transition-opacity delay-200 duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                <span className="block font-semibold text-zinc-100">{decision}</span>
+                <span className="mt-1 block">{description}</span>
+            </span>
         </span>
     );
+}
+
+function getDecisionDescription(decision: string) {
+    const lowerDecision = decision.toLowerCase();
+
+    if (lowerDecision.includes("recommended")) {
+        return "Selected as the deployment artifact because it best satisfies the run's quality, performance, and memory tradeoffs.";
+    }
+
+    if (lowerDecision.includes("reference")) {
+        return "Used as the baseline for quality and performance comparison. It is not usually the optimized deployment target.";
+    }
+
+    if (lowerDecision.includes("quality below threshold")) {
+        return "Rejected because validation quality fell below the configured deployment threshold, even if speed or memory improved.";
+    }
+
+    if (lowerDecision.includes("rejected")) {
+        return "Excluded from deployment because one or more run requirements were not satisfied.";
+    }
+
+    if (lowerDecision.includes("failed")) {
+        return "The candidate did not complete successfully, so it cannot be recommended.";
+    }
+
+    if (lowerDecision.includes("skipped")) {
+        return "The agent did not run this candidate because an earlier condition or dependency made it unnecessary or invalid.";
+    }
+
+    if (lowerDecision.includes("pending")) {
+        return "The agent has not finished building, benchmarking, or validating this candidate yet.";
+    }
+
+    return "Evaluated by the agent, but not selected as the final deployment recommendation.";
 }
 
 function getCandidateDecision(
