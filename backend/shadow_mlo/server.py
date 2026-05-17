@@ -1,11 +1,12 @@
 import asyncio
+import re
 import threading
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Callable, Optional
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -13,6 +14,8 @@ from pydantic import BaseModel
 from shadow_mlo import events
 
 app = FastAPI(title="Shadow-MLO API")
+
+UPLOAD_EXTENSIONS = {".onnx", ".pt", ".gguf"}
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +27,7 @@ app.add_middleware(
 _registry = None
 _hardware_profile: dict = {}
 _trigger_callback: Optional[Callable[[Path], None]] = None
+_upload_dir = Path("models") / "uploads"
 
 
 def set_registry(registry):
@@ -127,6 +131,37 @@ async def trigger_run(body: RunRequest):
     return JSONResponse({"ok": True, "artifact": body.artifact_path})
 
 
+@app.post("/api/upload")
+async def upload_artifact(file: UploadFile = File(...)):
+    """Upload an artifact and trigger optimization for it."""
+    if _trigger_callback is None:
+        return JSONResponse({"error": "No trigger callback registered"}, status_code=503)
+
+    filename = _safe_filename(file.filename or "")
+    if not filename:
+        return JSONResponse({"error": "Upload must include a filename"}, status_code=400)
+
+    suffix = Path(filename).suffix.lower()
+    if suffix not in UPLOAD_EXTENSIONS:
+        allowed = ", ".join(sorted(UPLOAD_EXTENSIONS))
+        return JSONResponse(
+            {"error": f"Unsupported artifact type. Expected one of: {allowed}"},
+            status_code=400,
+        )
+
+    _upload_dir.mkdir(parents=True, exist_ok=True)
+    destination = _unique_upload_path(_upload_dir / filename)
+
+    with destination.open("wb") as output:
+        while chunk := await file.read(1024 * 1024):
+            output.write(chunk)
+
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, lambda: _trigger_callback(destination))
+
+    return JSONResponse({"ok": True, "artifact": str(destination), "filename": destination.name})
+
+
 # ── Hardware ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/hardware")
@@ -158,3 +193,24 @@ def start(host: str = "0.0.0.0", port: int = 7860):
     )
     thread.start()
     return thread
+
+
+def _safe_filename(filename: str) -> str:
+    name = Path(filename).name.strip()
+    return re.sub(r"[^A-Za-z0-9._() -]+", "_", name)
+
+
+def _unique_upload_path(path: Path) -> Path:
+    if not path.exists():
+        return path
+
+    stem = path.stem
+    suffix = path.suffix
+    parent = path.parent
+    counter = 1
+
+    while True:
+        candidate = parent / f"{stem}_{counter}{suffix}"
+        if not candidate.exists():
+            return candidate
+        counter += 1

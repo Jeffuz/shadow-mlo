@@ -1,7 +1,6 @@
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { SystemStatusCards } from "@/components/dashboard/SystemStatusCards";
 import { LiveRunHeader } from "@/components/dashboard/LiveRunHeader";
 import { ArtifactClassificationCard } from "@/components/dashboard/ArtifactClassificationCard";
 import { DeviceProfileCard } from "@/components/dashboard/DeviceProfileCard";
@@ -28,15 +27,18 @@ export default function HomePage() {
       ) : (
         <div className="space-y-3">
           <LiveRunHeader job={job} />
-          <SystemStatusCards job={job} />
           <RecommendationCard job={job} />
           <ExecutionTimeline steps={job.timeline} />
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr]">
-            <CandidateResultsTable candidates={job.candidates} />
+            <CandidateResultsTable
+              candidates={job.candidates}
+              recommendation={job.recommendation}
+              stage={job.stage ?? job.status}
+            />
             <AgentReasoningCard job={job} />
           </div>
           <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.1fr_0.8fr_1.1fr]">
-            <AgentPlanCard plan={job.plan} />
+            <AgentPlanCard plan={job.plan} stage={job.stage ?? job.status} />
             <ArtifactClassificationCard classification={job.classification} />
             <DeviceProfileCard deviceProfile={job.deviceProfile} />
           </div>

@@ -54,6 +54,7 @@ export interface CandidateResult {
     name: string;
     runtime: RuntimePath;
     status: StepStatus;
+    decision?: string;
     latency?: string;
     throughput?: string;
     memory?: string;
