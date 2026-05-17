@@ -10,6 +10,7 @@ import httpx
 
 from shadow_mlo import events
 from shadow_mlo.inspector.artifact_inspector import ArtifactMetadata, inspect
+from shadow_mlo.inspector.pytorch_exporter import export_torchscript_to_onnx
 from shadow_mlo.jobs import (
     Candidate,
     Classification,
@@ -318,6 +319,12 @@ class ShadowAgent:
         self._set_timeline(job, "profile", "success", _now())
         self._save_and_broadcast(job)
 
+        if metadata.artifact_type == "PyTorch":
+            converted = self._try_export_pytorch(job, model_path, metadata)
+            if converted is None:
+                return self._finish_inspection_only(job, metadata)
+            model_path, metadata = converted
+
         if not metadata.optimization_supported:
             return self._finish_inspection_only(job, metadata)
 
@@ -499,6 +506,45 @@ class ShadowAgent:
             timeline=make_initial_timeline(),
             candidates=[],
         )
+
+    def _try_export_pytorch(
+        self,
+        job: Job,
+        model_path: Path,
+        metadata: ArtifactMetadata,
+    ) -> tuple[Path, ArtifactMetadata] | None:
+        job.stage = "converting_artifact"
+        job.plan = ["Export PyTorch artifact to ONNX, then reuse the ONNX optimization route."]
+        job.add_event("export_onnx", "Exporting PyTorch artifact to ONNX", "running")
+        self._set_timeline(job, "planned", "running")
+        self._save_and_broadcast(job)
+
+        export_dir = Path(model_path).parent / "exports"
+        export_result = export_torchscript_to_onnx(model_path, metadata, export_dir)
+        if not export_result.success or export_result.onnx_path is None:
+            reason = export_result.error or "PyTorch to ONNX export failed."
+            metadata.unsupported_reason = f"PyTorch inspection completed, but ONNX export failed: {reason}"
+            job.add_event("export_onnx", metadata.unsupported_reason, "failed")
+            self._set_timeline(job, "planned", "failed", _now())
+            self._save_and_broadcast(job)
+            return None
+
+        exported_metadata = inspect(export_result.onnx_path)
+        job.add_event("export_onnx", f"Exported to {export_result.onnx_path}", "success")
+        job.artifactType = "PyTorch -> ONNX"
+        job.modelFamily = exported_metadata.model_family
+        job.runtimePath = exported_metadata.optimization_runtime
+        job.classification = Classification(
+            format="PyTorch -> ONNX",
+            family=exported_metadata.model_family,
+            parameters=exported_metadata.parameters_str,
+            contextLength=exported_metadata.input_shape_str,
+            precision="FP32",
+            runtimePath=exported_metadata.optimization_runtime,
+        )
+        self._set_timeline(job, "planned", "success", _now())
+        self._save_and_broadcast(job)
+        return export_result.onnx_path, exported_metadata
 
     def _finish_inspection_only(self, job: Job, metadata: ArtifactMetadata) -> Job:
         reason = metadata.unsupported_reason or f"{metadata.artifact_type} inspection completed."
