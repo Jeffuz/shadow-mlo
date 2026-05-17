@@ -22,9 +22,9 @@ export function RuntimeRouteCard({ job }: RuntimeRouteCardProps) {
             active: job.runtimePath === "Benchmark Only",
         },
         {
-            label: "Unsupported",
-            runtime: "Conversion Required",
-            active: job.runtimePath === "Unsupported",
+            label: "Inspection Only",
+            runtime: "Metadata Profile",
+            active: job.runtimePath === "Inspection",
         },
     ];
 

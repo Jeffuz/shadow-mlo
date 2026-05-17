@@ -8,7 +8,8 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
     const isComplete =
         job.status === "completed" ||
         job.stage === "completed" ||
-        job.stage === "report_generated";
+        job.stage === "report_generated" ||
+        job.stage === "inspection_completed";
 
     const runningCandidate = job.candidates.find(
         (candidate) => candidate.status === "running"
@@ -56,13 +57,14 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
     }
 
     const recommendation = job.recommendation;
+    const isInspectionOnly = job.runtimePath === "Inspection";
 
     return (
         <section className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] px-4 py-2">
             <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                     <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-300">
-                        Recommended Artifact
+                        {isInspectionOnly ? "Inspection Complete" : "Recommended Artifact"}
                     </p>
 
                     <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">

@@ -319,7 +319,7 @@ class ShadowAgent:
         self._save_and_broadcast(job)
 
         if not metadata.optimization_supported:
-            return self._fail_unsupported(job, metadata)
+            return self._finish_inspection_only(job, metadata)
 
         # ── Plan (Nemotron) ───────────────────────────────────────────────────
         self._set_timeline(job, "planned", "running")
@@ -500,26 +500,26 @@ class ShadowAgent:
             candidates=[],
         )
 
-    def _fail_unsupported(self, job: Job, metadata: ArtifactMetadata) -> Job:
-        reason = metadata.unsupported_reason or f"{metadata.artifact_type} optimization is not implemented yet."
-        job.status = "failed"
-        job.stage = "unsupported_artifact"
+    def _finish_inspection_only(self, job: Job, metadata: ArtifactMetadata) -> Job:
+        reason = metadata.unsupported_reason or f"{metadata.artifact_type} inspection completed."
+        job.status = "completed"
+        job.stage = "inspection_completed"
         job.plan = [reason]
-        job.add_event("route_artifact", reason, "failed")
-        self._set_timeline(job, "planned", "failed", _now())
-        self._set_timeline(job, "building", "failed", _now())
-        self._set_timeline(job, "benchmark", "failed", _now())
-        self._set_timeline(job, "report", "failed", _now())
+        job.add_event("route_artifact", reason, "success")
+        self._set_timeline(job, "planned", "success", _now())
+        self._set_timeline(job, "building", "skipped", _now())
+        self._set_timeline(job, "benchmark", "skipped", _now())
+        self._set_timeline(job, "report", "success", _now())
         job.recommendation = Recommendation(
-            candidate="Unsupported",
-            artifact="",
+            candidate="Inspection Only",
+            artifact=metadata.path,
             reason=reason,
             speedup="—",
             quality="—",
             memoryReduction="—",
         )
         self._save_and_broadcast(job)
-        events.broadcast("pipeline_error", {"job_id": job.id, "error": reason})
+        events.broadcast("job_completed", {"job_id": job.id})
         return job
 
     def _set_timeline(self, job: Job, stage_id: str, status: str, timestamp: str = None):
