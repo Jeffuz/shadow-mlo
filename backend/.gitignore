@@ -2,6 +2,8 @@
 __pycache__
 .env
 *.db
+*.db-shm
+*.db-wal
 models/
 reports/
 engines/

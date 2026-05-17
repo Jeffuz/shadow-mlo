@@ -8,7 +8,8 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
     const isComplete =
         job.status === "completed" ||
         job.stage === "completed" ||
-        job.stage === "report_generated";
+        job.stage === "report_generated" ||
+        job.stage === "inspection_completed";
 
     const runningCandidate = job.candidates.find(
         (candidate) => candidate.status === "running"
@@ -64,7 +65,7 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                     <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-300">
-                        Recommended Artifact
+                        {isInspectionOnly ? "Inspection Complete" : "Recommended Artifact"}
                     </p>
 
                     <h3 className="mt-1 truncate font-mono text-sm font-semibold text-white">

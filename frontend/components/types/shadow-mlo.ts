@@ -2,6 +2,7 @@ export type RuntimePath =
     | "TensorRT"
     | "TensorRT-LLM"
     | "Benchmark Only"
+    | "Inspection"
     | "Unsupported"
     | "Unknown";
 
@@ -38,6 +39,7 @@ export type JobStage =
     | "benchmarking"
     | "quality_check"
     | "report_generated"
+    | "inspection_completed"
     | "completed"
     | "failed";
 
