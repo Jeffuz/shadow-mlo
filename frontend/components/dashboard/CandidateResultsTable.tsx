@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CandidateResult, JobStage, JobStatus, ShadowJob } from "../types/shadow-mlo";
 import { StatusBadge } from "../ui/StatusBadge";
+import { API_BASE } from "../lib/api";
 
 interface CandidateResultsTableProps {
     candidates: CandidateResult[];
@@ -89,9 +90,7 @@ export function CandidateResultsTable({
                                     <Td>{candidate.quality ?? "—"}</Td>
 
                                     <Td>
-                                        <code className="block max-w-[260px] break-all font-mono text-[11px] leading-5 text-emerald-300">
-                                            {formatArtifactName(candidate.artifact)}
-                                        </code>
+                                        <ArtifactCell artifact={candidate.artifact} />
                                     </Td>
                                 </tr>
                             );
@@ -147,6 +146,32 @@ function SkeletonCell({ width }: { width: string }) {
 
 function SkeletonPill() {
     return <div className="h-5 w-24 animate-pulse rounded-full bg-zinc-800" />;
+}
+
+function ArtifactCell({ artifact }: { artifact?: string }) {
+    const name = formatArtifactName(artifact);
+    if (!artifact || name === "—") {
+        return <span className="text-zinc-600">—</span>;
+    }
+    const downloadUrl = `${API_BASE}/api/download/${encodeURIComponent(name)}`;
+    return (
+        <a
+            href={downloadUrl}
+            title={`Download ${name}`}
+            className="group inline-flex max-w-[260px] items-center gap-1 break-all font-mono text-[11px] leading-5 text-emerald-300 hover:text-emerald-200 hover:underline"
+        >
+            <span className="break-all">{name}</span>
+            <svg
+                className="h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+            >
+                <path d="M8 1a.75.75 0 0 1 .75.75v6.19l1.97-1.97a.75.75 0 1 1 1.06 1.06L8 10.81 4.22 7.03a.75.75 0 0 1 1.06-1.06L7.25 7.94V1.75A.75.75 0 0 1 8 1ZM2.75 13.25a.75.75 0 0 1 .75-.75h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1-.75-.75Z" />
+            </svg>
+        </a>
+    );
 }
 
 function DecisionBadge({ decision }: { decision: string }) {

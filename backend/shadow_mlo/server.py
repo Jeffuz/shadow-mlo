@@ -8,7 +8,7 @@ from typing import Callable, Optional
 import uvicorn
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from shadow_mlo import events
@@ -160,6 +160,30 @@ async def upload_artifact(file: UploadFile = File(...)):
     loop.run_in_executor(None, lambda: _trigger_callback(destination))
 
     return JSONResponse({"ok": True, "artifact": str(destination), "filename": destination.name})
+
+
+# ── Artifacts ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/download/{filename}")
+async def download_artifact(filename: str):
+    safe_name = Path(filename).name  # strip any directory traversal
+    if not safe_name or safe_name.startswith("."):
+        return JSONResponse({"error": "Invalid filename"}, status_code=400)
+
+    # Search recursively under models/ (resolves relative to server cwd)
+    models_root = Path("models").resolve()
+    if models_root.exists():
+        matches = list(models_root.rglob(safe_name))
+        if matches:
+            target = matches[0]
+            return FileResponse(
+                path=str(target),
+                filename=safe_name,
+                media_type="application/octet-stream",
+                headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+            )
+
+    return JSONResponse({"error": f"File not found: {safe_name}"}, status_code=404)
 
 
 # ── Hardware ──────────────────────────────────────────────────────────────────

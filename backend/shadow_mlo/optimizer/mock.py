@@ -50,6 +50,9 @@ class MockOptimizer(OptimizerBackend):
     def compile(self, onnx_path: Path, config: OptimizationConfig) -> CompileResult:
         time.sleep(0.5)
         engine_path = onnx_path.parent / f"{onnx_path.stem}_{config.label()}.engine"
+        # Create a real file so the download endpoint can serve it
+        engine_path.parent.mkdir(parents=True, exist_ok=True)
+        engine_path.write_bytes(b"SHADOW_MLO_MOCK_ENGINE\x00" + onnx_path.read_bytes()[:256] if onnx_path.exists() else b"SHADOW_MLO_MOCK_ENGINE\x00")
         return CompileResult(
             config=config,
             success=True,

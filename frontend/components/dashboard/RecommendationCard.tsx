@@ -57,6 +57,7 @@ export function RecommendationCard({ job }: RecommendationCardProps) {
     }
 
     const recommendation = job.recommendation;
+    const isInspectionOnly = job.runtimePath === "Inspection";
     // const reason = getRecommendationReason(job);
     // const policy = getRecommendationPolicy(job);
 
